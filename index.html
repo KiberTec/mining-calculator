@@ -1,0 +1,2785 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор майнинга BTC + Журнал</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --bg2: #171b24;
+    --bg3: #1e2330;
+    --bg4: #252b3d;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf0;
+    --text2: #8b91a8;
+    --text3: #555d75;
+    --green: #1db97a;
+    --green-dim: rgba(29,185,122,0.12);
+    --red: #e2544b;
+    --red-dim: rgba(226,84,75,0.1);
+    --amber: #e8a832;
+    --amber-dim: rgba(232,168,50,0.1);
+    --blue: #4a90e2;
+    --blue-dim: rgba(74,144,226,0.1);
+    --accent: #f7931a;
+    --accent-dim: rgba(247,147,26,0.1);
+    --purple: #b46de5;
+    --purple-dim: rgba(180,109,229,0.1);
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 32px 20px 60px;
+  }
+
+  .container { max-width: 980px; margin: 0 auto; }
+
+  header { margin-bottom: 28px; }
+  header h1 { font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+  header p { font-size: 14px; color: var(--text2); margin-top: 4px; }
+  .btc-icon { display: inline-block; color: var(--accent); margin-right: 6px; }
+
+  /* Live data banner with 3 cards */
+  .live-banner {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .live-banner-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .live-banner-title {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text3);
+    flex: 1;
+    min-width: 180px;
+  }
+  .live-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 640px) { .live-cards { grid-template-columns: 1fr; } }
+  .live-card {
+    background: var(--bg3);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border: 0.5px solid transparent;
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .live-card:hover { background: var(--bg4); border-color: var(--border2); }
+  .live-card-label {
+    font-size: 11px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .05em;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .live-card-value {
+    font-size: 19px; font-weight: 600;
+    color: var(--accent); font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+  .live-card-status {
+    font-size: 10.5px; color: var(--text3);
+  }
+  .live-card-status.ok { color: var(--green); }
+  .live-card-status.error { color: var(--red); }
+  .live-card-status.loading { color: var(--text2); }
+  .live-card-status .live-dot {
+    display: inline-block; width: 5px; height: 5px;
+    border-radius: 50%; background: currentColor;
+    margin-right: 4px; animation: pulse 2s infinite;
+  }
+  .live-card-apply-hint {
+    font-size: 10px; color: var(--text3);
+    margin-top: 2px;
+    opacity: 0;
+    transition: opacity .12s;
+  }
+  .live-card:hover .live-card-apply-hint { opacity: 1; }
+
+  .btn {
+    background: var(--bg3);
+    color: var(--text);
+    border: 0.5px solid var(--border2);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s, border-color .15s;
+  }
+  .btn:hover { background: var(--bg4); }
+  .btn.primary { background: var(--accent); color: #0f1117; border-color: var(--accent); }
+  .btn.primary:hover { background: #ffa733; }
+  .btn.danger { background: transparent; color: var(--red); border-color: rgba(226,84,75,0.3); }
+  .btn.danger:hover { background: var(--red-dim); }
+  .btn.small { padding: 4px 10px; font-size: 12px; }
+  .btn.ghost { background: transparent; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 22px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 5px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    font-family: inherit;
+    line-height: 1.4;
+    text-align: center;
+  }
+  .tab-btn.active { background: var(--bg3); color: var(--text); }
+  .tab-btn .tab-tag {
+    display: block; font-size: 10px; font-weight: 400;
+    color: var(--text3); margin-top: 1px;
+  }
+  .tab-btn.active .tab-tag { color: var(--text2); }
+
+  .tab-section { display: none; }
+  .tab-section.active { display: block; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* Panels */
+  .panel { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; }
+  .full-panel { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; margin-bottom: 16px; }
+  .panel-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 18px; }
+  .panel-title.with-actions { display: flex; align-items: center; gap: 12px; }
+  .panel-title.with-actions .actions { margin-left: auto; display: flex; gap: 8px; }
+  .section-gap { margin-bottom: 16px; }
+
+  /* Sliders */
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .slider-row:last-child { margin-bottom: 0; }
+  .slider-label { font-size: 13px; color: var(--text2); min-width: 148px; }
+  .slider-row input[type=range] {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 4px; background: var(--bg3); border-radius: 2px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: 2px solid var(--bg2);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%; background: var(--accent);
+    cursor: pointer; border: 2px solid var(--bg2);
+  }
+  .slider-val { font-size: 13px; font-weight: 600; min-width: 110px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* Editable slider value (number input + unit) */
+  .slider-val-wrap {
+    display: flex; align-items: center; gap: 4px;
+    min-width: 140px; justify-content: flex-end;
+  }
+  .slider-val-input {
+    font-size: 13px; font-weight: 600;
+    width: 82px; text-align: right;
+    color: var(--text); font-variant-numeric: tabular-nums;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-family: inherit;
+    outline: none;
+    -moz-appearance: textfield;
+    transition: border-color .12s, background .12s;
+  }
+  .slider-val-input::-webkit-outer-spin-button,
+  .slider-val-input::-webkit-inner-spin-button {
+    -webkit-appearance: none; margin: 0;
+  }
+  .slider-val-input:hover { border-color: var(--border2); background: var(--bg3); }
+  .slider-val-input:focus { border-color: var(--accent); background: var(--bg3); }
+  .slider-val-unit { font-size: 13px; color: var(--text2); font-weight: 500; min-width: 22px; }
+  .slider-val-extra { font-size: 11px; color: var(--text3); margin-left: 6px; }
+
+  /* Cards */
+  .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 640px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+  .metric-card { background: var(--bg3); border-radius: var(--radius); padding: 12px 14px; }
+  .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+  .metric-value { font-size: 19px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .metric-value.pos { color: var(--green); }
+  .metric-value.neg { color: var(--red); }
+  .metric-value.accent { color: var(--accent); }
+  .metric-value.blue { color: var(--blue); }
+  .metric-value.purple { color: var(--purple); }
+
+  /* Compare */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 640px) { .compare-grid { grid-template-columns: 1fr; } }
+  .compare-card { background: var(--bg3); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .compare-card.highlight { border-color: rgba(29,185,122,0.3); background: rgba(29,185,122,0.05); }
+  .compare-card h4 { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .compare-num { font-size: 17px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+  .compare-sub { font-size: 12px; color: var(--text2); }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 6px; }
+  .badge-green { background: var(--green-dim); color: var(--green); }
+  .badge-red { background: var(--red-dim); color: var(--red); }
+  .badge-amber { background: var(--amber-dim); color: var(--amber); }
+  .badge-blue { background: var(--blue-dim); color: var(--blue); }
+
+  /* Formula box */
+  .formula-box { background: var(--accent-dim); border: 0.5px solid rgba(247,147,26,0.2); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px; font-size: 13px; color: var(--text2); line-height: 1.8; }
+  .formula-box.blue-box { background: var(--blue-dim); border-color: rgba(74,144,226,0.2); }
+  .formula-box .hl { color: var(--accent); font-weight: 600; }
+  .formula-box.blue-box .hl { color: var(--blue); }
+  .formula-box .note { font-size: 12px; color: var(--text3); margin-top: 6px; }
+
+  /* Chart */
+  .chart-wrap { position: relative; width: 100%; height: 280px; margin-top: 8px; }
+  .chart-wrap.tall { height: 320px; }
+  .chart-legend { display: flex; gap: 20px; margin-bottom: 12px; font-size: 12px; color: var(--text2); flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 24px; height: 3px; border-radius: 2px; }
+  .legend-dot.dashed { background: repeating-linear-gradient(90deg, #8b91a8 0px, #8b91a8 5px, transparent 5px, transparent 9px); }
+
+  /* Shared params */
+  .shared-banner { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 16px; }
+  .shared-banner .panel-title { margin-bottom: 14px; }
+  .shared-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  @media (max-width: 640px) { .shared-grid { grid-template-columns: 1fr; } }
+
+  /* ===== Journal styles ===== */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px 16px;
+  }
+  @media (max-width: 760px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; font-weight: 500; }
+  .field input, .field select {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  /* ===== Month picker ===== */
+  .month-picker { position: relative; width: 100%; }
+  .month-picker-display {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: border-color .12s;
+    user-select: none;
+  }
+  .month-picker-display:hover { border-color: var(--border2); }
+  .month-picker.open .month-picker-display { border-color: var(--accent); }
+  .month-picker-display .chevron { font-size: 10px; color: var(--text2); transition: transform .15s; }
+  .month-picker.open .chevron { transform: rotate(180deg); }
+
+  .month-picker-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    background: var(--bg4);
+    border: 0.5px solid var(--border2);
+    border-radius: 10px;
+    padding: 12px;
+    z-index: 100;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.4);
+    min-width: 260px;
+  }
+  .month-picker.open .month-picker-dropdown { display: block; }
+
+  .year-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .ynav-btn {
+    background: transparent; border: none; color: var(--text2);
+    font-size: 16px; cursor: pointer; padding: 4px 10px;
+    border-radius: 6px; line-height: 1; font-family: inherit;
+  }
+  .ynav-btn:hover { background: var(--bg3); color: var(--text); }
+  .ynav-year {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+  .mgrid-btn {
+    background: var(--bg3);
+    border: 0.5px solid transparent;
+    color: var(--text);
+    font-size: 12.5px;
+    padding: 9px 0;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .12s;
+    position: relative;
+  }
+  .mgrid-btn:hover:not(:disabled) { background: var(--bg2); border-color: var(--border2); }
+  .mgrid-btn.selected {
+    background: var(--accent); color: #0f1117;
+    border-color: var(--accent); font-weight: 600;
+  }
+  .mgrid-btn.has-entry::after {
+    content: ''; position: absolute; bottom: 4px; left: 50%;
+    transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--green);
+  }
+  .mgrid-btn.selected.has-entry::after { background: #0f1117; }
+  .mgrid-btn.this-month { box-shadow: inset 0 0 0 1px var(--accent); }
+  .mgrid-btn:disabled { color: var(--text3); cursor: not-allowed; opacity: 0.5; }
+
+  .month-picker-quick {
+    display: flex; gap: 6px;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 0.5px solid var(--border);
+  }
+  .month-picker-quick button {
+    flex: 1; background: transparent;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px; font-size: 12px;
+    color: var(--text2); cursor: pointer; font-family: inherit;
+    transition: all .12s;
+  }
+  .month-picker-quick button:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+
+  /* Difficulty field with loading state */
+  .field-loading input { padding-right: 30px; }
+  .field-loading-icon {
+    position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px; color: var(--text3);
+  }
+  .field-with-icon { position: relative; }
+  .field-optional {
+    display: inline-block;
+    font-size: 9px;
+    background: var(--bg4);
+    color: var(--text2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 4px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    vertical-align: middle;
+  }
+
+  .field input::placeholder { color: var(--text3); }
+  .field .hint { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .form-panel {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .form-panel.active { display: block; }
+
+  /* Table */
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--bg3);
+    border-radius: var(--radius);
+    margin-top: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    min-width: 760px;
+  }
+  thead { background: var(--bg4); }
+  thead th {
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    color: var(--text2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 0.5px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 0.5px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; }
+  td.pos { color: var(--green); }
+  td.neg { color: var(--red); }
+  td.muted { color: var(--text2); }
+  td.actions-cell { text-align: right; }
+  .row-btn { background: transparent; border: none; color: var(--text3); cursor: pointer; padding: 4px 8px; font-size: 14px; border-radius: 4px; }
+  .row-btn:hover { background: var(--bg4); color: var(--text); }
+  .row-btn.delete:hover { color: var(--red); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text2);
+    font-size: 14px;
+  }
+  .empty-state strong { color: var(--text); font-weight: 600; display: block; margin-bottom: 4px; }
+
+  /* Actions bar */
+  .actions-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .actions-bar .spacer { flex: 1; }
+
+  /* User segmented switcher */
+  .user-switcher {
+    display: flex;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+    margin-bottom: 18px;
+    gap: 4px;
+    width: fit-content;
+  }
+  .user-seg {
+    background: transparent;
+    border: none;
+    color: var(--text2);
+    padding: 8px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .user-seg:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .user-seg.active { background: var(--bg4); color: var(--text); }
+  .user-seg.active.user-D { color: #4a90e2; }
+  .user-seg.active.user-G { color: #f7931a; }
+  .user-seg.active.user-DG { color: #b46de5; }
+  .user-seg .seg-badge {
+    display: inline-block;
+    min-width: 18px;
+    height: 18px;
+    line-height: 18px;
+    padding: 0 6px;
+    border-radius: 9px;
+    font-size: 10px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text3);
+    font-weight: 600;
+  }
+  .user-seg.active .seg-badge { background: rgba(255,255,255,0.1); color: var(--text2); }
+
+  /* Comparison view */
+  .compare-table-wrap { overflow-x: auto; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .compare-table th, .compare-table td { padding: 10px 12px; text-align: right; border-bottom: 0.5px solid var(--border); }
+  .compare-table th:first-child, .compare-table td:first-child { text-align: left; }
+  .compare-table th {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text3); font-weight: 600; background: var(--bg3);
+    position: sticky; top: 0;
+  }
+  .compare-table th.col-D { color: #4a90e2; }
+  .compare-table th.col-G { color: #f7931a; }
+  .compare-table th.col-sum { color: #b46de5; }
+  .compare-table th.col-diff { color: var(--text2); }
+  .compare-table td.col-D { color: #4a90e2; }
+  .compare-table td.col-G { color: #f7931a; }
+  .compare-table td.col-sum { color: #b46de5; font-weight: 600; }
+  .compare-table td.col-diff.pos { color: var(--green); }
+  .compare-table td.col-diff.neg { color: var(--red); }
+  .compare-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .compare-table .month-cell { color: var(--text); font-weight: 600; }
+  .compare-table .missing { color: var(--text3); font-style: italic; }
+
+  /* Live dot */
+  .live-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); margin-right: 4px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1><span class="btc-icon">₿</span>Калькулятор рентабельности майнинга</h1>
+    <p>Три раздела: особые условия, классический расчёт и журнал реальных данных</p>
+  </header>
+
+  <!-- Live market data banner -->
+  <div class="live-banner">
+    <div class="live-banner-header">
+      <span class="live-banner-title">Live данные с открытых API</span>
+      <button class="btn small" id="refreshAllBtn">Обновить</button>
+      <button class="btn small primary" id="applyAllBtn">Применить ко всем параметрам</button>
+    </div>
+    <div class="live-cards">
+      <div class="live-card" id="liveBtcCard" data-target="btc_price">
+        <div class="live-card-label">Цена BTC</div>
+        <div class="live-card-value" id="liveBtcVal">—</div>
+        <div class="live-card-status loading" id="liveBtcStatus">загрузка...</div>
+        <div class="live-card-apply-hint">клик → применить</div>
+      </div>
+      <div class="live-card" id="liveRubCard" data-target="usd_rub">
+        <div class="live-card-label">Курс USD/RUB</div>
+        <div class="live-card-value" id="liveRubVal">—</div>
+        <div class="live-card-status loading" id="liveRubStatus">загрузка...</div>
+        <div class="live-card-apply-hint">клик → применить</div>
+      </div>
+      <div class="live-card" id="liveDiffCard" data-target="difficulty">
+        <div class="live-card-label">Сложность сети</div>
+        <div class="live-card-value" id="liveDiffVal">—</div>
+        <div class="live-card-status loading" id="liveDiffStatus">загрузка...</div>
+        <div class="live-card-apply-hint">клик → применить</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared params -->
+  <div class="shared-banner section-gap">
+    <div class="panel-title">Общие параметры</div>
+    <div class="shared-grid">
+      <div class="slider-row">
+        <span class="slider-label">Цена BTC, $</span>
+        <input type="range" id="btc_price" min="40000" max="200000" step="1000" value="90000">
+        <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="btc_price_input" value="90000" step="any"><span class="slider-val-unit">$</span></span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Хешрейт, TH/s</span>
+        <input type="range" id="hashrate" min="500" max="100000" step="100" value="6000">
+        <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="hashrate_input" value="6000" step="any"><span class="slider-val-unit">TH/s</span><span class="slider-val-extra" id="hashrate_ph">(6.0 PH/s)</span></span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Курс USD/RUB</span>
+        <input type="range" id="usd_rub" min="60" max="130" step="1" value="87">
+        <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="usd_rub_input" value="87" step="any"><span class="slider-val-unit">₽</span></span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Сложность сети, T</span>
+        <input type="range" id="difficulty" min="50" max="300" step="1" value="139">
+        <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="difficulty_input" value="139" step="any"><span class="slider-val-unit">T</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="classic">Классический расчёт<span class="tab-tag">Оплата только деньгами</span></button>
+    <button class="tab-btn" data-tab="special">Особые условия<span class="tab-tag">% от добычи + рубли</span></button>
+    <button class="tab-btn" data-tab="journal">Журнал<span class="tab-tag">Реальные данные по месяцам</span></button>
+  </div>
+
+  <!-- TAB 1: Special (BTC %) -->
+  <div class="tab-section" id="tab-special">
+    <div class="grid-2 section-gap">
+      <div class="panel">
+        <div class="panel-title">Параметры оплаты</div>
+        <div class="slider-row">
+          <span class="slider-label">Потребление, кВтч/мес</span>
+          <input type="range" id="s_elec_kwh" min="20000" max="500000" step="1000" value="86000">
+          <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="s_elec_kwh_input" value="86000" step="any"><span class="slider-val-unit">кВтч</span></span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Тариф (рубли), ₽/кВтч</span>
+          <input type="range" id="s_elec_rate" min="0.5" max="15" step="0.01" value="2.64">
+          <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="s_elec_rate_input" value="2.64" step="any"><span class="slider-val-unit">₽</span></span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">% дохода → оплата BTC</span>
+          <input type="range" id="btc_pct" min="5" max="60" step="1" value="25">
+          <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="btc_pct_input" value="25" step="any"><span class="slider-val-unit">%</span></span>
+        </div>
+      </div>
+      <div class="panel" style="display:flex;flex-direction:column;justify-content:center;gap:6px">
+        <div class="panel-title">Логика расчёта</div>
+        <div class="formula-box" style="margin-bottom:0">
+          Добыча BTC = <span class="hl">hashrate × 86400 × 30 / (difficulty × 2³²) × 3.125</span><br>
+          Оплата BTC = <span class="hl">Добыча × % к оплате</span><br>
+          Оплата ₽ = <span class="hl">кВтч × тариф</span>
+          <div class="note">При росте сложности → добываете меньше → платите меньше BTC. Нагрузка масштабируется с реальным доходом.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="full-panel section-gap">
+      <div class="panel-title">Текущие показатели</div>
+      <div class="cards-grid" id="s_cards"></div>
+    </div>
+
+    <div class="full-panel section-gap">
+      <div class="panel-title">Сравнение: договорной фикс 0.02046 BTC vs формула</div>
+      <div class="compare-grid" id="s_compare"></div>
+    </div>
+
+    <div class="full-panel">
+      <div class="panel-title">Прибыль при разных ценах BTC (тыс. ₽)</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Формула (% от добычи)</div>
+        <div class="legend-item"><div class="legend-dot dashed"></div>Фикс 0.02046 BTC</div>
+      </div>
+      <div class="chart-wrap"><canvas id="s_chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Classic -->
+  <div class="tab-section active" id="tab-classic">
+    <div class="grid-2 section-gap">
+      <div class="panel">
+        <div class="panel-title">Параметры оплаты</div>
+        <div class="slider-row">
+          <span class="slider-label">Потребление, кВтч/мес</span>
+          <input type="range" id="c_elec_kwh" min="20000" max="500000" step="1000" value="86000">
+          <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="c_elec_kwh_input" value="86000" step="any"><span class="slider-val-unit">кВтч</span></span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Тариф, ₽/кВтч</span>
+          <input type="range" id="c_elec_rub" min="0.5" max="15" step="0.01" value="2.64">
+          <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="c_elec_rub_input" value="2.64" step="any"><span class="slider-val-unit">₽</span></span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Прочие расходы, ₽/мес</span>
+          <input type="range" id="c_other" min="0" max="1000000" step="1000" value="0">
+          <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="c_other_input" value="0" step="any"><span class="slider-val-unit">₽</span></span>
+        </div>
+      </div>
+      <div class="panel" style="display:flex;flex-direction:column;justify-content:center;gap:6px">
+        <div class="panel-title">Логика расчёта</div>
+        <div class="formula-box blue-box" style="margin-bottom:0">
+          Добыча BTC = <span class="hl">hashrate × 86400 × 30 / (difficulty × 2³²) × 3.125</span><br>
+          Расходы = <span class="hl">кВтч × тариф ₽/кВтч + прочие расходы ₽</span><br>
+          Доход = <span class="hl">Добыча BTC × цена BTC$</span><br>
+          Прибыль = <span class="hl">Доход − Расходы</span>
+          <div class="note">Стандартный майнинг-расчёт: платишь деньгами, получаешь биткоин.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="full-panel section-gap">
+      <div class="panel-title">Текущие показатели</div>
+      <div class="cards-grid" id="c_cards"></div>
+    </div>
+
+    <div class="full-panel section-gap">
+      <div class="panel-title">Точка безубыточности</div>
+      <div class="compare-grid" id="c_breakeven"></div>
+    </div>
+
+    <div class="full-panel">
+      <div class="panel-title">Прибыль при разных ценах BTC (тыс. ₽)</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Прибыль ₽</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Расходы (линия)</div>
+      </div>
+      <div class="chart-wrap"><canvas id="c_chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Journal -->
+  <div class="tab-section" id="tab-journal">
+
+    <div class="user-switcher" id="userSwitcher">
+      <button class="user-seg user-D" data-user="D">D <span class="seg-badge" id="badge_D">0</span></button>
+      <button class="user-seg user-G active" data-user="G">G <span class="seg-badge" id="badge_G">0</span></button>
+      <button class="user-seg user-DG" data-user="DG">D+G <span class="seg-badge" id="badge_DG">0</span></button>
+    </div>
+
+    <div class="actions-bar">
+      <button class="btn primary" id="addEntryBtn">+ Добавить запись</button>
+      <button class="btn" id="exportCsvBtn">Экспорт CSV</button>
+      <button class="btn" id="exportJsonBtn" title="Полный бэкап обоих журналов в JSON">📦 Бэкап JSON</button>
+      <button class="btn" id="importJsonBtn" title="Загрузить бэкап от партнёра">📥 Восстановить</button>
+      <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none;">
+      <div class="spacer"></div>
+      <button class="btn danger" id="clearAllBtn">Очистить всё</button>
+    </div>
+
+    <!-- Entry form -->
+    <div class="form-panel" id="entryForm">
+      <div class="panel-title with-actions">
+        <span id="formTitle">Новая запись</span>
+        <div class="actions"><button class="btn small ghost" id="closeFormBtn">✕</button></div>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Месяц</label>
+          <div class="month-picker" id="monthPicker">
+            <input type="hidden" id="f_month">
+            <div class="month-picker-display" id="monthDisplay">
+              <span id="monthDisplayText">— выбери месяц —</span>
+              <span class="chevron">▼</span>
+            </div>
+            <div class="month-picker-dropdown" id="monthDropdown">
+              <div class="year-nav">
+                <button type="button" class="ynav-btn" id="yearPrev">←</button>
+                <span class="ynav-year" id="yearLabel">2026</span>
+                <button type="button" class="ynav-btn" id="yearNext">→</button>
+              </div>
+              <div class="month-grid" id="monthGrid"></div>
+              <div class="month-picker-quick">
+                <button type="button" id="quickLast">Прошлый</button>
+                <button type="button" id="quickThis">Этот</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Потребление, кВтч</label>
+          <input type="number" id="f_kwh" placeholder="86000" min="0" step="100">
+        </div>
+        <div class="field">
+          <label>Заплачено за эл-во, ₽</label>
+          <input type="number" id="f_rubElec" placeholder="227040" min="0" step="100">
+          <span class="hint" id="f_rubElec_hint">эфф. тариф: —</span>
+        </div>
+        <div class="field">
+          <label>Средний хешрейт, TH/s</label>
+          <input type="number" id="f_hashrate" placeholder="6000" min="0" step="10">
+        </div>
+        <div class="field field-with-icon">
+          <label>Сложность сети <span class="field-optional">опц.</span></label>
+          <input type="number" id="f_difficulty" placeholder="авто-загрузка..." min="0" step="0.1">
+          <span class="hint" id="f_difficulty_hint">используется для расчёта операционной эффективности</span>
+        </div>
+        <div class="field">
+          <label>Намайнено, BTC</label>
+          <input type="number" id="f_btcMined" placeholder="0.0796" min="0" step="0.00001">
+        </div>
+        <div class="field">
+          <label>Продано, BTC</label>
+          <input type="number" id="f_btcSold" placeholder="0.05" min="0" step="0.00001">
+        </div>
+        <div class="field">
+          <label>Цена продажи, $/BTC</label>
+          <input type="number" id="f_salePrice" placeholder="90000" min="0" step="100">
+        </div>
+        <div class="field">
+          <label>Курс RUB при продаже</label>
+          <input type="number" id="f_usdRub" placeholder="87" min="0" step="0.1">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn primary" id="saveEntryBtn">Сохранить</button>
+        <button class="btn" id="cancelEntryBtn">Отмена</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="full-panel section-gap" id="summaryPanel">
+      <div class="panel-title">Сводка по всем записям</div>
+      <div class="cards-grid" id="j_summary"></div>
+      <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg3); border-radius: var(--radius); font-size: 12px; color: var(--text2); line-height: 1.5;">
+        💡 <strong style="color:var(--text);">Реализованная прибыль</strong> — только от фактических продаж BTC. <strong style="color:var(--text);">Прибыль с HODL (mark-to-market)</strong> — с учётом текущей рыночной стоимости неподнятого биткоина. Если ты майнишь и держишь, реализованная будет отрицательной (потратил на электричество), а mark-to-market покажет реальную картину твоего портфеля.
+      </div>
+    </div>
+
+    <!-- BTC Position / PnL panel -->
+    <div class="full-panel section-gap" id="btcPositionPanel" style="display:none;">
+      <div class="panel-title">💎 BTC накопления — нереализованный PnL</div>
+      <div class="cards-grid" id="btcPositionCards"></div>
+
+      <div style="margin-top: 18px; padding: 16px 18px; background: var(--bg3); border-radius: var(--radius);">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;">Что-если: при какой цене BTC сколько заработаю?</div>
+        <div class="slider-row" style="margin-bottom:14px;">
+          <span class="slider-label">Цена BTC, $</span>
+          <input type="range" id="whatif_price" min="20000" max="300000" step="500" value="109000">
+          <span class="slider-val-wrap">
+            <input type="number" class="slider-val-input" id="whatif_price_input" value="109000" step="any">
+            <span class="slider-val-unit">$</span>
+          </span>
+        </div>
+        <div class="compare-grid" id="whatifResult"></div>
+      </div>
+
+      <div style="margin-top: 18px;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">PnL по сценариям цены BTC</div>
+        <div class="chart-wrap"><canvas id="pnlChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="full-panel section-gap">
+      <div class="panel-title">История по месяцам</div>
+      <div id="historyContent"></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="full-panel section-gap" id="chartPanel1">
+      <div class="panel-title">Доход / расходы / прибыль по месяцам (₽)</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Доход</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Расходы</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Прибыль</div>
+      </div>
+      <div class="chart-wrap tall"><canvas id="j_chart1"></canvas></div>
+    </div>
+
+    <div class="full-panel section-gap" id="chartPanel2">
+      <div class="panel-title">Биткоин: добыто / продано / удержано (BTC)</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Намайнено</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#b46de5"></div>Продано</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Осталось (HODL)</div>
+      </div>
+      <div class="chart-wrap tall"><canvas id="j_chart2"></canvas></div>
+    </div>
+
+    <div class="full-panel" id="chartPanel3">
+      <div class="panel-title">Себестоимость 1 BTC по месяцам ($)</div>
+      <div class="chart-wrap"><canvas id="j_chart3"></canvas></div>
+    </div>
+
+  </div><!-- /tab-journal -->
+
+</div>
+
+<script>
+// ============================================
+// CONSTANTS & STATE
+// ============================================
+const FIXED_BTC = 0.02046;
+const STORAGE_KEY_LEGACY = 'mining_journal_v1';
+const STORAGE_KEY_USER = 'mining_journal_user_v1';
+const storageKeyFor = (u) => 'mining_journal_' + u;  // 'mining_journal_D' / 'mining_journal_G'
+const REWARD = 3.125; // Post-April 2024 halving
+
+// Active user: 'D', 'G', or 'DG' (combined view)
+let currentUser = 'G';
+
+// One-time migration: legacy 'mining_journal_v1' → 'mining_journal_G'
+(function migrateLegacyJournal() {
+  try {
+    const legacy = localStorage.getItem(STORAGE_KEY_LEGACY);
+    if (!legacy) return;
+    const gKey = storageKeyFor('G');
+    if (!localStorage.getItem(gKey)) {
+      localStorage.setItem(gKey, legacy);
+    }
+    localStorage.removeItem(STORAGE_KEY_LEGACY);
+  } catch(e) { /* ignore */ }
+})();
+
+// Restore last-active user
+try {
+  const savedUser = localStorage.getItem(STORAGE_KEY_USER);
+  if (savedUser === 'D' || savedUser === 'G' || savedUser === 'DG') currentUser = savedUser;
+} catch(e) { /* ignore */ }
+
+let sChart = null, cChart = null;
+let jChart1 = null, jChart2 = null, jChart3 = null;
+let editingId = null;
+
+// ============================================
+// HELPERS
+// ============================================
+function fmt(n, dec=0) {
+  if (!isFinite(n)) return '—';
+  return n.toLocaleString('ru-RU', { maximumFractionDigits: dec, minimumFractionDigits: dec });
+}
+function fmtEn(n, dec=0) {
+  if (!isFinite(n)) return '—';
+  return n.toLocaleString('en-US', { maximumFractionDigits: dec, minimumFractionDigits: dec });
+}
+function calcBtcMined(hashrate_th, diff_t) {
+  return (hashrate_th * 1e12) * 86400 * 30 / ((diff_t * 1e12) * Math.pow(2,32)) * REWARD;
+}
+function chartOpts(yTickFn, tooltipFn) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1e2330', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+        titleColor: '#e8eaf0', bodyColor: '#8b91a8',
+        callbacks: { label: tooltipFn }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555d75', font: { size: 12 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555d75', font: { size: 12 }, callback: yTickFn } }
+    }
+  };
+}
+
+
+// ============================================
+// MONTH PICKER (custom)
+// ============================================
+const MONTH_SHORT = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+const MONTH_FULL  = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+let pickerViewYear = new Date().getFullYear();
+let pickerOnChange = null;
+
+function getSelectedMonth() {
+  return document.getElementById('f_month').value;
+}
+
+function setSelectedMonth(monthStr, triggerChange=true) {
+  const input = document.getElementById('f_month');
+  input.value = monthStr || '';
+  const txt = document.getElementById('monthDisplayText');
+  if (monthStr) {
+    const [y, m] = monthStr.split('-').map(Number);
+    txt.textContent = MONTH_FULL[m-1] + ' ' + y;
+    pickerViewYear = y;
+  } else {
+    txt.textContent = '— выбери месяц —';
+  }
+  if (triggerChange && monthStr && pickerOnChange) {
+    pickerOnChange(monthStr);
+  }
+}
+
+function openMonthPicker() {
+  document.getElementById('monthPicker').classList.add('open');
+  const sel = getSelectedMonth();
+  if (sel) pickerViewYear = +sel.split('-')[0];
+  renderMonthGrid();
+}
+function closeMonthPicker() {
+  document.getElementById('monthPicker').classList.remove('open');
+}
+
+function renderMonthGrid() {
+  document.getElementById('yearLabel').textContent = pickerViewYear;
+  const grid = document.getElementById('monthGrid');
+  const selected = getSelectedMonth();
+  const now = new Date();
+  const nowYear = now.getFullYear(), nowMonth = now.getMonth();
+  const entries = new Set(loadEntries().map(e => e.month));
+
+  grid.innerHTML = MONTH_SHORT.map((name, idx) => {
+    const ms = pickerViewYear + '-' + String(idx+1).padStart(2,'0');
+    const isFuture = pickerViewYear > nowYear || (pickerViewYear === nowYear && idx > nowMonth);
+    const isSelected = ms === selected;
+    const isThisMonth = pickerViewYear === nowYear && idx === nowMonth;
+    const hasEntry = entries.has(ms);
+    const cls = ['mgrid-btn'];
+    if (isSelected) cls.push('selected');
+    if (isThisMonth && !isSelected) cls.push('this-month');
+    if (hasEntry) cls.push('has-entry');
+    const disabled = isFuture ? 'disabled' : '';
+    return `<button type="button" class="${cls.join(' ')}" data-month="${ms}" ${disabled}>${name}</button>`;
+  }).join('');
+
+  grid.querySelectorAll('.mgrid-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setSelectedMonth(btn.dataset.month);
+      closeMonthPicker();
+    });
+  });
+}
+
+document.getElementById('monthDisplay').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const p = document.getElementById('monthPicker');
+  if (p.classList.contains('open')) closeMonthPicker();
+  else openMonthPicker();
+});
+
+document.getElementById('yearPrev').addEventListener('click', (e) => {
+  e.stopPropagation();
+  pickerViewYear--;
+  renderMonthGrid();
+});
+document.getElementById('yearNext').addEventListener('click', (e) => {
+  e.stopPropagation();
+  pickerViewYear++;
+  renderMonthGrid();
+});
+
+document.getElementById('quickThis').addEventListener('click', () => {
+  const now = new Date();
+  setSelectedMonth(now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0'));
+  closeMonthPicker();
+});
+document.getElementById('quickLast').addEventListener('click', () => {
+  const now = new Date();
+  let y = now.getFullYear(), m = now.getMonth() - 1;
+  if (m < 0) { m = 11; y--; }
+  setSelectedMonth(y + '-' + String(m+1).padStart(2,'0'));
+  closeMonthPicker();
+});
+
+document.addEventListener('click', (e) => {
+  const p = document.getElementById('monthPicker');
+  if (p && p.classList.contains('open') && !p.contains(e.target)) closeMonthPicker();
+});
+
+// ============================================
+// HISTORICAL DIFFICULTY FETCH (cached)
+// ============================================
+const DIFF_CACHE_KEY = 'btc_diff_cache_v1';
+
+function loadDiffCache() {
+  try { return JSON.parse(localStorage.getItem(DIFF_CACHE_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function saveDiffCache(c) { localStorage.setItem(DIFF_CACHE_KEY, JSON.stringify(c)); }
+
+async function fetchHistoricalDifficulty(monthStr) {
+  const cache = loadDiffCache();
+  if (cache[monthStr]) return cache[monthStr];
+
+  const [y, m] = monthStr.split('-').map(Number);
+  // Use 28th day at noon UTC as anchor
+  const dateUtc = new Date(Date.UTC(y, m-1, 28, 12, 0, 0));
+  const now = new Date();
+
+  // For current/future months — return live value
+  if (dateUtc > now) {
+    return window._liveDifficulty || null;
+  }
+
+  const ts = Math.floor(dateUtc.getTime() / 1000);
+  const fetchT = (url, ms=8000) => Promise.race([
+    fetch(url, { cache: 'no-store' }),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+  ]);
+
+  // Strategy: get block at timestamp -> get its difficulty
+  const sources = [
+    {
+      name: 'mempool direct',
+      run: async () => {
+        const r1 = await fetchT(`https://mempool.space/api/v1/mining/blocks/timestamp/${ts}`);
+        const d1 = await r1.json();
+        if (!d1.height) throw new Error('no height');
+        const r2 = await fetchT(`https://mempool.space/api/v1/blocks/${d1.height}`);
+        const blocks = await r2.json();
+        const b = Array.isArray(blocks) ? blocks[0] : blocks;
+        if (!b || !b.difficulty) throw new Error('no diff');
+        return b.difficulty / 1e12;
+      }
+    },
+    {
+      name: 'via codetabs',
+      run: async () => {
+        const enc = encodeURIComponent;
+        const r1 = await fetchT(`https://api.codetabs.com/v1/proxy/?quest=${enc('https://mempool.space/api/v1/mining/blocks/timestamp/' + ts)}`, 12000);
+        const d1 = await r1.json();
+        if (!d1.height) throw new Error('no height');
+        const r2 = await fetchT(`https://api.codetabs.com/v1/proxy/?quest=${enc('https://mempool.space/api/v1/blocks/' + d1.height)}`, 12000);
+        const blocks = await r2.json();
+        const b = Array.isArray(blocks) ? blocks[0] : blocks;
+        if (!b || !b.difficulty) throw new Error('no diff');
+        return b.difficulty / 1e12;
+      }
+    },
+    {
+      name: 'via allorigins',
+      run: async () => {
+        const enc = encodeURIComponent;
+        const r1 = await fetchT(`https://api.allorigins.win/raw?url=${enc('https://mempool.space/api/v1/mining/blocks/timestamp/' + ts)}`, 12000);
+        const d1 = await r1.json();
+        if (!d1.height) throw new Error('no height');
+        const r2 = await fetchT(`https://api.allorigins.win/raw?url=${enc('https://mempool.space/api/v1/blocks/' + d1.height)}`, 12000);
+        const blocks = await r2.json();
+        const b = Array.isArray(blocks) ? blocks[0] : blocks;
+        if (!b || !b.difficulty) throw new Error('no diff');
+        return b.difficulty / 1e12;
+      }
+    }
+  ];
+
+  for (const src of sources) {
+    try {
+      const d = await src.run();
+      if (isFinite(d) && d > 0) {
+        cache[monthStr] = d;
+        saveDiffCache(cache);
+        console.log('[hist diff] ' + monthStr + ' = ' + d.toFixed(2) + 'T via ' + src.name);
+        return d;
+      }
+    } catch(e) {
+      console.warn('[hist diff] ' + src.name + ' failed:', e.message);
+    }
+  }
+  return null;
+}
+
+// Hook: when month is selected in form, fetch historical difficulty
+pickerOnChange = async (monthStr) => {
+  const field = document.getElementById('f_difficulty');
+  const hint = document.getElementById('f_difficulty_hint');
+  // Don't overwrite if user typed something
+  const userTyped = field.dataset.userEdited === '1';
+  if (userTyped && field.value) return;
+
+  field.placeholder = 'загружаю...';
+  hint.textContent = 'ищу сложность сети на ' + monthStr + '-28...';
+
+  try {
+    const d = await fetchHistoricalDifficulty(monthStr);
+    if (d) {
+      field.value = d.toFixed(2);
+      field.placeholder = '';
+      hint.textContent = 'авто: ' + d.toFixed(2) + ' T на ' + monthStr + '-28 (UTC)';
+    } else {
+      field.placeholder = (window._liveDifficulty || 0).toFixed(2);
+      hint.textContent = 'не удалось получить из сети — поставь вручную если нужно';
+    }
+  } catch(e) {
+    field.placeholder = '';
+    hint.textContent = 'ошибка загрузки — поле опциональное';
+  }
+};
+
+// Track if user manually edits difficulty (so we don't overwrite)
+document.getElementById('f_difficulty').addEventListener('input', function() {
+  this.dataset.userEdited = '1';
+});
+
+
+// ============================================
+// TABS
+// ============================================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    btn.classList.add('active');
+    // Re-render charts when switching to journal (Chart.js needs visible canvas)
+    if (btn.dataset.tab === 'journal') {
+      setTimeout(() => renderJournal(), 50);
+    }
+  });
+});
+
+// ============================================
+// SHARED PARAMS & MAIN UPDATE
+// ============================================
+function updateShared() {
+  const btcPrice = +document.getElementById('btc_price').value;
+  const usdRub   = +document.getElementById('usd_rub').value;
+  const diff     = +document.getElementById('difficulty').value;
+  const hashrate = +document.getElementById('hashrate').value;
+
+  if (document.activeElement.id !== 'btc_price_input') document.getElementById('btc_price_input').value = btcPrice;
+  if (document.activeElement.id !== 'usd_rub_input') document.getElementById('usd_rub_input').value = usdRub;
+  if (document.activeElement.id !== 'difficulty_input') document.getElementById('difficulty_input').value = diff;
+  if (document.activeElement.id !== 'hashrate_input') document.getElementById('hashrate_input').value = hashrate;
+  document.getElementById('hashrate_ph').textContent = '(' + (hashrate/1000).toFixed(2) + ' PH/s)';
+
+  updateSpecial(btcPrice, usdRub, diff, hashrate);
+  updateClassic(btcPrice, usdRub, diff, hashrate);
+}
+
+// ============================================
+// TAB 1: Special
+// ============================================
+function updateSpecial(btcPrice, usdRub, diff, hashrate) {
+  const pct      = +document.getElementById('btc_pct').value / 100;
+  const elecKwh  = +document.getElementById('s_elec_kwh').value;
+  const elecRate = +document.getElementById('s_elec_rate').value;
+
+  if (document.activeElement.id !== 'btc_pct_input') document.getElementById('btc_pct_input').value = pct*100;
+  if (document.activeElement.id !== 's_elec_kwh_input') document.getElementById('s_elec_kwh_input').value = elecKwh;
+  if (document.activeElement.id !== 's_elec_rate_input') document.getElementById('s_elec_rate_input').value = elecRate;
+
+  const rubFixed   = elecKwh * elecRate;
+  const btcMined   = calcBtcMined(hashrate, diff);
+  const btcPayForm = btcMined * pct;
+  const profit_f  = (btcMined - btcPayForm) * btcPrice * usdRub - rubFixed;
+  const profit_fx = (btcMined - FIXED_BTC)  * btcPrice * usdRub - rubFixed;
+  const roi_f     = profit_f  / (rubFixed + btcPayForm * btcPrice * usdRub) * 100;
+  const roi_fx    = profit_fx / (rubFixed + FIXED_BTC  * btcPrice * usdRub) * 100;
+
+  document.getElementById('s_cards').innerHTML = `
+    <div class="metric-card"><div class="metric-label">Добыча в месяц</div><div class="metric-value accent">${btcMined.toFixed(5)} BTC</div></div>
+    <div class="metric-card"><div class="metric-label">Оплата BTC (формула)</div><div class="metric-value">${btcPayForm.toFixed(5)} BTC</div></div>
+    <div class="metric-card"><div class="metric-label">Оплата рублями</div><div class="metric-value">${fmt(rubFixed)} ₽</div></div>
+    <div class="metric-card"><div class="metric-label">Доход</div><div class="metric-value">${fmt(btcMined * btcPrice * usdRub)} ₽</div></div>
+    <div class="metric-card"><div class="metric-label">Прибыль</div><div class="metric-value ${profit_f>=0?'pos':'neg'}">${fmt(profit_f)} ₽</div></div>
+    <div class="metric-card"><div class="metric-label">Рентабельность</div><div class="metric-value ${roi_f>=0?'pos':'neg'}">${roi_f.toFixed(1)}%</div></div>
+  `;
+
+  const diff_btc = btcPayForm - FIXED_BTC;
+  const saving = -diff_btc * btcPrice * usdRub;
+  const savingBadge = saving > 0
+    ? `<span class="badge badge-green">−${fmt(saving)} ₽/мес</span>`
+    : `<span class="badge badge-red">+${fmt(-saving)} ₽/мес</span>`;
+  document.getElementById('s_compare').innerHTML = `
+    <div class="compare-card"><h4>Договорной фикс</h4><div class="compare-num">${FIXED_BTC.toFixed(5)} BTC</div><div class="compare-sub">${fmt(FIXED_BTC * btcPrice * usdRub)} ₽</div><div class="compare-sub">ROI: <strong>${roi_fx.toFixed(1)}%</strong></div></div>
+    <div class="compare-card highlight"><h4>Формула (${fmt(pct*100)}% от добычи)</h4><div class="compare-num">${btcPayForm.toFixed(5)} BTC</div><div class="compare-sub">${fmt(btcPayForm * btcPrice * usdRub)} ₽</div><div class="compare-sub">ROI: <strong>${roi_f.toFixed(1)}%</strong></div></div>
+    <div class="compare-card"><h4>Разница</h4><div class="compare-num">${diff_btc>=0?'+':''}${diff_btc.toFixed(5)} BTC</div><div class="compare-sub">Экономия на оплате BTC:</div>${savingBadge}</div>
+  `;
+
+  const prices = [40000,50000,60000,70000,80000,90000,100000,110000,120000,130000,150000];
+  const pf  = prices.map(p => Math.round(((btcMined - btcPayForm) * p * usdRub - rubFixed)/1000));
+  const pfx = prices.map(p => Math.round(((btcMined - FIXED_BTC)  * p * usdRub - rubFixed)/1000));
+
+  if (sChart) sChart.destroy();
+  sChart = new Chart(document.getElementById('s_chart'), {
+    type: 'line',
+    data: {
+      labels: prices.map(p => '$'+(p/1000)+'k'),
+      datasets: [
+        { label:'Формула', data:pf, borderColor:'#1db97a', backgroundColor:'rgba(29,185,122,0.08)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#1db97a', tension:0.3, fill:true },
+        { label:'Фикс 0.02046', data:pfx, borderColor:'#555d75', backgroundColor:'rgba(85,93,117,0.05)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#555d75', tension:0.3, fill:true, borderDash:[6,4] }
+      ]
+    },
+    options: chartOpts(v => fmt(v)+'k ₽', ctx => ctx.dataset.label+': '+fmt(ctx.parsed.y)+' тыс. ₽')
+  });
+}
+
+// ============================================
+// TAB 2: Classic
+// ============================================
+function updateClassic(btcPrice, usdRub, diff, hashrate) {
+  const elecKwh  = +document.getElementById('c_elec_kwh').value;
+  const elecRub  = +document.getElementById('c_elec_rub').value;
+  const otherRub = +document.getElementById('c_other').value;
+
+  if (document.activeElement.id !== 'c_elec_kwh_input') document.getElementById('c_elec_kwh_input').value = elecKwh;
+  if (document.activeElement.id !== 'c_elec_rub_input') document.getElementById('c_elec_rub_input').value = elecRub;
+  if (document.activeElement.id !== 'c_other_input') document.getElementById('c_other_input').value = otherRub;
+
+  const btcMined   = calcBtcMined(hashrate, diff);
+  const costRub    = elecKwh * elecRub + otherRub;
+  const costUsd    = costRub / usdRub;
+  const revenueUsd = btcMined * btcPrice;
+  const revenueRub = revenueUsd * usdRub;
+  const profitUsd  = revenueUsd - costUsd;
+  const profitRub  = profitUsd * usdRub;
+  const roi        = costUsd > 0 ? profitUsd / costUsd * 100 : 0;
+  const costPerBtc = costUsd / btcMined;
+  const marginPct  = (btcPrice - costPerBtc) / btcPrice * 100;
+
+  document.getElementById('c_cards').innerHTML = `
+    <div class="metric-card"><div class="metric-label">Добыча в месяц</div><div class="metric-value accent">${btcMined.toFixed(5)} BTC</div></div>
+    <div class="metric-card"><div class="metric-label">Затраты</div><div class="metric-value">${fmt(costRub)} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(costUsd))}</span></div></div>
+    <div class="metric-card"><div class="metric-label">Доход</div><div class="metric-value">${fmt(Math.round(revenueRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(revenueUsd))}</span></div></div>
+    <div class="metric-card"><div class="metric-label">Прибыль, ₽</div><div class="metric-value ${profitRub>=0?'pos':'neg'}">${fmt(Math.round(profitRub))} ₽</div></div>
+    <div class="metric-card"><div class="metric-label">Прибыль, $</div><div class="metric-value ${profitUsd>=0?'pos':'neg'}">$${fmtEn(Math.round(profitUsd))}</div></div>
+    <div class="metric-card"><div class="metric-label">Рентабельность</div><div class="metric-value ${roi>=0?'pos':'neg'}">${roi.toFixed(1)}%</div></div>
+  `;
+
+  document.getElementById('c_breakeven').innerHTML = `
+    <div class="compare-card"><h4>Себестоимость 1 BTC</h4><div class="compare-num">$${fmtEn(Math.round(costPerBtc))}</div><div class="compare-sub">${fmt(Math.round(costPerBtc * usdRub))} ₽</div></div>
+    <div class="compare-card ${btcPrice >= costPerBtc ? 'highlight' : ''}"><h4>Точка безубыточности</h4><div class="compare-num">$${fmtEn(Math.round(costPerBtc))}</div><div class="compare-sub">Мин. цена BTC для безубытка</div><span class="badge ${btcPrice >= costPerBtc ? 'badge-green' : 'badge-red'}">${btcPrice >= costPerBtc ? '✓ выше безубытка' : '✗ ниже безубытка'}</span></div>
+    <div class="compare-card"><h4>Маржа</h4><div class="compare-num">${marginPct.toFixed(1)}%</div><div class="compare-sub">${marginPct >= 0 ? 'от цены BTC' : 'убыток'}</div><span class="badge ${marginPct > 30 ? 'badge-green' : marginPct > 0 ? 'badge-amber' : 'badge-red'}">${marginPct > 30 ? 'хорошая маржа' : marginPct > 0 ? 'низкая маржа' : 'убыток'}</span></div>
+  `;
+
+  const prices = [40000,50000,60000,70000,80000,90000,100000,110000,120000,130000,150000];
+  const profitsRub = prices.map(p => Math.round((btcMined * p * usdRub - costRub) / 1000));
+  const costsLine  = prices.map(() => Math.round(costRub / 1000));
+
+  if (cChart) cChart.destroy();
+  cChart = new Chart(document.getElementById('c_chart'), {
+    type: 'line',
+    data: {
+      labels: prices.map(p => '$'+(p/1000)+'k'),
+      datasets: [
+        { label:'Прибыль ₽', data:profitsRub, borderColor:'#4a90e2', backgroundColor:'rgba(74,144,226,0.08)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#4a90e2', tension:0.3, fill:true },
+        { label:'Расходы ₽', data:costsLine, borderColor:'#e2544b', backgroundColor:'transparent', borderWidth:1.5, pointRadius:0, tension:0, fill:false, borderDash:[4,3] }
+      ]
+    },
+    options: chartOpts(v => fmt(v)+'k ₽', ctx => ctx.dataset.label + ': ' + fmt(ctx.parsed.y) + ' тыс. ₽')
+  });
+}
+
+// ============================================
+// TAB 3: Journal (localStorage CRUD)
+// ============================================
+function loadEntries(user) {
+  const u = user || (currentUser === 'DG' ? 'G' : currentUser);
+  try {
+    return JSON.parse(localStorage.getItem(storageKeyFor(u)) || '[]');
+  } catch(e) { return []; }
+}
+function saveEntries(entries, user) {
+  const u = user || (currentUser === 'DG' ? 'G' : currentUser);
+  localStorage.setItem(storageKeyFor(u), JSON.stringify(entries));
+}
+function countEntries(user) {
+  try {
+    return (JSON.parse(localStorage.getItem(storageKeyFor(user)) || '[]')).length;
+  } catch(e) { return 0; }
+}
+function sortByMonth(entries) {
+  return [...entries].sort((a,b) => a.month.localeCompare(b.month));
+}
+
+// ---- Form handling ----
+function openForm(entry = null) {
+  const form = document.getElementById('entryForm');
+  form.classList.add('active');
+  document.getElementById('formTitle').textContent = entry ? 'Редактировать запись' : 'Новая запись';
+
+  if (entry) {
+    editingId = entry.id;
+    setSelectedMonth(entry.month || '', false);
+    document.getElementById('f_difficulty').dataset.userEdited = '1';  // mark as edited so we don't auto-overwrite
+    
+    document.getElementById('f_kwh').value        = entry.kwh ?? '';
+    document.getElementById('f_rubElec').value    = entry.rubElec ?? '';
+    document.getElementById('f_hashrate').value   = entry.hashrate ?? '';
+    document.getElementById('f_difficulty').value = entry.difficulty ?? '';
+    document.getElementById('f_btcMined').value   = entry.btcMined ?? '';
+    document.getElementById('f_btcSold').value    = entry.btcSold ?? '';
+    document.getElementById('f_salePrice').value  = entry.salePrice ?? '';
+    document.getElementById('f_usdRub').value     = entry.usdRub ?? '';
+  } else {
+    editingId = null;
+    // Reset edited flag
+    document.getElementById('f_difficulty').dataset.userEdited = '';
+    const now = new Date();
+    const yyyymm = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    setSelectedMonth(yyyymm, true);  // triggers historical diff fetch
+    document.getElementById('f_kwh').value        = document.getElementById('c_elec_kwh').value;
+    document.getElementById('f_rubElec').value    = '';
+    document.getElementById('f_hashrate').value   = document.getElementById('hashrate').value;
+    document.getElementById('f_difficulty').value = document.getElementById('difficulty').value;
+    document.getElementById('f_btcMined').value   = '';
+    document.getElementById('f_btcSold').value    = '';
+    document.getElementById('f_salePrice').value  = document.getElementById('btc_price').value;
+    document.getElementById('f_usdRub').value     = document.getElementById('usd_rub').value;
+  }
+  updateRubElecHint();
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeForm() {
+  document.getElementById('entryForm').classList.remove('active');
+  closeMonthPicker();
+  editingId = null;
+}
+
+function updateRubElecHint() {
+  const kwh = +document.getElementById('f_kwh').value;
+  const rub = +document.getElementById('f_rubElec').value;
+  const hint = document.getElementById('f_rubElec_hint');
+  if (kwh > 0 && rub > 0) {
+    hint.textContent = 'эфф. тариф: ' + (rub/kwh).toFixed(2) + ' ₽/кВтч';
+  } else {
+    hint.textContent = 'эфф. тариф: —';
+  }
+}
+document.getElementById('f_kwh').addEventListener('input', updateRubElecHint);
+document.getElementById('f_rubElec').addEventListener('input', updateRubElecHint);
+
+// ---- User switcher ----
+function setUser(u) {
+  if (u !== 'D' && u !== 'G' && u !== 'DG') return;
+  currentUser = u;
+  try { localStorage.setItem(STORAGE_KEY_USER, u); } catch(e) {}
+  document.querySelectorAll('.user-seg').forEach(b => {
+    b.classList.toggle('active', b.dataset.user === u);
+  });
+  closeForm();
+  renderJournal();
+}
+document.querySelectorAll('.user-seg').forEach(btn => {
+  btn.addEventListener('click', () => setUser(btn.dataset.user));
+});
+
+document.getElementById('addEntryBtn').addEventListener('click', () => openForm());
+document.getElementById('cancelEntryBtn').addEventListener('click', closeForm);
+document.getElementById('closeFormBtn').addEventListener('click', closeForm);
+
+document.getElementById('saveEntryBtn').addEventListener('click', () => {
+  const month = document.getElementById('f_month').value;
+  if (!month) { alert('Укажите месяц'); return; }
+
+  const entry = {
+    id: editingId ?? Date.now(),
+    month,
+    kwh:        +document.getElementById('f_kwh').value || 0,
+    rubElec:    +document.getElementById('f_rubElec').value || 0,
+    hashrate:   +document.getElementById('f_hashrate').value || 0,
+    difficulty: +document.getElementById('f_difficulty').value || 0,
+    btcMined:   +document.getElementById('f_btcMined').value || 0,
+    btcSold:    +document.getElementById('f_btcSold').value || 0,
+    salePrice:  +document.getElementById('f_salePrice').value || 0,
+    usdRub:     +document.getElementById('f_usdRub').value || 0,
+  };
+
+  let entries = loadEntries();
+  if (editingId !== null) {
+    entries = entries.map(e => e.id === editingId ? entry : e);
+  } else {
+    // Check for duplicate month
+    const existing = entries.find(e => e.month === month);
+    if (existing) {
+      if (!confirm(`Запись за ${month} уже существует. Заменить?`)) return;
+      entries = entries.filter(e => e.month !== month);
+    }
+    entries.push(entry);
+  }
+  saveEntries(entries);
+  closeForm();
+  renderJournal();
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  if (currentUser === 'DG') return;
+  if (!confirm(`Удалить ВСЕ записи журнала ${currentUser}? Это действие нельзя отменить.`)) return;
+  saveEntries([]);
+  renderJournal();
+});
+
+function deleteEntry(id) {
+  if (!confirm('Удалить эту запись?')) return;
+  saveEntries(loadEntries().filter(e => e.id !== id));
+  renderJournal();
+}
+function editEntry(id) {
+  const entry = loadEntries().find(e => e.id === id);
+  if (entry) openForm(entry);
+}
+
+// ---- CSV export ----
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const buildRows = (user) => {
+    const entries = sortByMonth(loadEntries(user));
+    return entries.map(e => {
+      const revenueRub = e.btcSold * e.salePrice * e.usdRub;
+      const profitRub  = revenueRub - e.rubElec;
+      const costPerBtc = e.btcMined > 0 ? (e.rubElec / e.usdRub) / e.btcMined : 0;
+      return [user, e.month, e.kwh, e.rubElec, e.hashrate, e.difficulty, e.btcMined, e.btcSold, e.salePrice, e.usdRub, Math.round(revenueRub), Math.round(profitRub), Math.round(costPerBtc)];
+    });
+  };
+  let rows = [];
+  let fileTag = currentUser;
+  if (currentUser === 'DG') {
+    rows = [...buildRows('D'), ...buildRows('G')];
+    fileTag = 'D+G';
+  } else {
+    rows = buildRows(currentUser);
+  }
+  if (rows.length === 0) { alert('Журнал пуст'); return; }
+  const headers = ['Пользователь','Месяц','кВтч','Заплачено ₽','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Прибыль ₽','Себестоимость 1 BTC $'];
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'mining_journal_' + fileTag + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ---- JSON full backup (export) ----
+const BACKUP_TYPE = 'mining_calculator_journal';
+const BACKUP_VERSION = 1;
+
+document.getElementById('exportJsonBtn').addEventListener('click', () => {
+  const d = loadEntries('D');
+  const g = loadEntries('G');
+  const diffCache = loadDiffCache();
+  const total = d.length + g.length;
+
+  if (total === 0 && !confirm('Журналы D и G пусты. Всё равно создать бэкап-файл?')) return;
+
+  const backup = {
+    type: BACKUP_TYPE,
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    counts: { D: d.length, G: g.length },
+    journals: { D: d, G: g },
+    diffCache,
+  };
+
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mining_journal_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ---- JSON full backup (import) ----
+document.getElementById('importJsonBtn').addEventListener('click', () => {
+  document.getElementById('importJsonFile').click();
+});
+
+document.getElementById('importJsonFile').addEventListener('change', async (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if (!data || data.type !== BACKUP_TYPE) {
+      alert('❌ Это не бэкап журнала майнинга\n\nОжидался файл с type = "' + BACKUP_TYPE + '"');
+      ev.target.value = '';
+      return;
+    }
+
+    const dImport = (data.journals && Array.isArray(data.journals.D)) ? data.journals.D : [];
+    const gImport = (data.journals && Array.isArray(data.journals.G)) ? data.journals.G : [];
+    const diffImport = (data.diffCache && typeof data.diffCache === 'object') ? data.diffCache : {};
+
+    const dCur = loadEntries('D');
+    const gCur = loadEntries('G');
+
+    const exportedDate = data.exportedAt
+      ? new Date(data.exportedAt).toLocaleString('ru-RU')
+      : 'неизвестно';
+
+    const msg =
+      '📥 Импорт бэкапа\n\n' +
+      'Экспорт от: ' + exportedDate + '\n\n' +
+      'В файле:\n' +
+      '  • D — ' + dImport.length + ' записей\n' +
+      '  • G — ' + gImport.length + ' записей\n\n' +
+      'Сейчас у тебя:\n' +
+      '  • D — ' + dCur.length + ' записей\n' +
+      '  • G — ' + gCur.length + ' записей\n\n' +
+      'OK → объединить (для одинаковых месяцев берётся более новая запись)\n' +
+      'Отмена → не импортировать';
+
+    if (!confirm(msg)) {
+      ev.target.value = '';
+      return;
+    }
+
+    // Merge: для каждого пользователя по месяцу оставляем более новую запись (по id = timestamp создания)
+    const mergeUserEntries = (current, imported) => {
+      const map = new Map();
+      for (const e of current) map.set(e.month, e);
+      for (const e of imported) {
+        const existing = map.get(e.month);
+        if (!existing || (e.id || 0) > (existing.id || 0)) {
+          map.set(e.month, e);
+        }
+      }
+      return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+    };
+
+    const dMerged = mergeUserEntries(dCur, dImport);
+    const gMerged = mergeUserEntries(gCur, gImport);
+
+    saveEntries(dMerged, 'D');
+    saveEntries(gMerged, 'G');
+
+    // Кеш сложности: импортированные значения дополняют локальный кеш
+    const diffMerged = { ...loadDiffCache(), ...diffImport };
+    saveDiffCache(diffMerged);
+
+    alert(
+      '✓ Импорт завершён\n\n' +
+      'D: ' + dCur.length + ' → ' + dMerged.length + ' записей\n' +
+      'G: ' + gCur.length + ' → ' + gMerged.length + ' записей'
+    );
+
+    renderJournal();
+  } catch (e) {
+    alert('Ошибка чтения файла: ' + e.message);
+  }
+  ev.target.value = '';
+});
+
+// ---- Render ----
+function updateUserBadges() {
+  const cD = countEntries('D'), cG = countEntries('G');
+  const bD = document.getElementById('badge_D'); if (bD) bD.textContent = cD;
+  const bG = document.getElementById('badge_G'); if (bG) bG.textContent = cG;
+  const bDG = document.getElementById('badge_DG'); if (bDG) bDG.textContent = cD + cG;
+}
+
+function renderJournal() {
+  updateUserBadges();
+  const isDG = currentUser === 'DG';
+
+  // Toggle CRUD UI based on mode
+  const addBtn = document.getElementById('addEntryBtn');
+  const clearBtn = document.getElementById('clearAllBtn');
+  if (addBtn) addBtn.style.display = isDG ? 'none' : '';
+  if (clearBtn) clearBtn.style.display = isDG ? 'none' : '';
+  if (isDG) closeForm();
+
+  if (isDG) { renderCompareView(); return; }
+
+  const entries = sortByMonth(loadEntries());
+
+  // Summary
+  const tot = entries.reduce((a, e) => {
+    const revUsd = e.btcSold * e.salePrice;
+    const revRub = revUsd * e.usdRub;
+    const costUsd = e.usdRub > 0 ? e.rubElec / e.usdRub : 0;
+    a.kwh += e.kwh;
+    a.rubElec += e.rubElec;
+    a.costUsd += costUsd;
+    a.btcMined += e.btcMined;
+    a.btcSold += e.btcSold;
+    a.revRub += revRub;
+    a.revUsd += revUsd;
+    return a;
+  }, { kwh:0, rubElec:0, costUsd:0, btcMined:0, btcSold:0, revRub:0, revUsd:0 });
+
+  const profRub = tot.revRub - tot.rubElec;       // Realized (from sales only)
+  const profUsd = tot.revUsd - tot.costUsd;
+  const btcKept = tot.btcMined - tot.btcSold;
+  const avgCostPerBtc = tot.btcMined > 0 ? tot.costUsd / tot.btcMined : 0;
+
+  // Current market rates (live data preferred, slider as fallback)
+  // Доп.защита: игнорируем явно битые значения (например <$1000 за BTC)
+  const _liveBtc = window._liveBtcPrice;
+  const _sliderBtc = +document.getElementById('btc_price').value;
+  const curBtcPrice = (isFinite(_liveBtc) && _liveBtc >= 1000) ? _liveBtc
+                    : (isFinite(_sliderBtc) && _sliderBtc >= 1000 ? _sliderBtc : 0);
+  const curUsdRub   = window._liveUsdRub   || +document.getElementById('usd_rub').value;
+
+  // HODL valuation at current price
+  const hodlValueUsd = btcKept * curBtcPrice;
+  const hodlValueRub = hodlValueUsd * curUsdRub;
+
+  // Mark-to-market profit = realized + unrealized HODL value
+  const mtmRub = profRub + hodlValueRub;
+  const mtmUsd = profUsd + hodlValueUsd;
+
+  // Update panel title with entry count
+  function pluralRu(n, one, few, many) {
+    const mod10 = n % 10, mod100 = n % 100;
+    if (mod100 >= 11 && mod100 <= 14) return many;
+    if (mod10 === 1) return one;
+    if (mod10 >= 2 && mod10 <= 4) return few;
+    return many;
+  }
+  const titleEl = document.querySelector('#summaryPanel .panel-title');
+  if (titleEl) {
+    titleEl.innerHTML = 'Сводка по всем записям <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">' +
+      entries.length + ' ' + pluralRu(entries.length, 'запись', 'записи', 'записей') + '</span>';
+  }
+
+  document.getElementById('j_summary').innerHTML = `
+    <div class="metric-card"><div class="metric-label">Всего намайнено</div><div class="metric-value accent">${tot.btcMined.toFixed(5)} BTC</div></div>
+    <div class="metric-card"><div class="metric-label">Всего продано</div><div class="metric-value purple">${tot.btcSold.toFixed(5)} BTC</div></div>
+    <div class="metric-card"><div class="metric-label">HODL осталось</div><div class="metric-value ${btcKept>=0?'pos':'neg'}">${btcKept.toFixed(5)} BTC</div></div>
+
+    <div class="metric-card"><div class="metric-label">Расходы (всего)</div><div class="metric-value">${fmt(Math.round(tot.rubElec))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(tot.costUsd))}</span></div></div>
+    <div class="metric-card"><div class="metric-label">Доход от продаж</div><div class="metric-value">${fmt(Math.round(tot.revRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(tot.revUsd))}</span></div></div>
+    <div class="metric-card"><div class="metric-label">Стоимость HODL сейчас <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0;">@ $${fmtEn(Math.round(curBtcPrice))}</span></div><div class="metric-value blue">${fmt(Math.round(hodlValueRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(hodlValueUsd))}</span></div></div>
+
+    <div class="metric-card"><div class="metric-label">Прибыль реализованная <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(только от продаж)</span></div><div class="metric-value ${profRub>=0?'pos':'neg'}">${fmt(Math.round(profRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(profUsd))}</span></div></div>
+    <div class="metric-card" style="border:0.5px solid ${mtmRub>=0?'rgba(29,185,122,0.35)':'rgba(226,84,75,0.35)'};background:${mtmRub>=0?'rgba(29,185,122,0.05)':'rgba(226,84,75,0.05)'};"><div class="metric-label">Прибыль с HODL <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(mark-to-market)</span></div><div class="metric-value ${mtmRub>=0?'pos':'neg'}">${fmt(Math.round(mtmRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(mtmUsd))}</span></div></div>
+    <div class="metric-card"><div class="metric-label">Себест. 1 BTC <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(среднее)</span></div><div class="metric-value">$${fmtEn(Math.round(avgCostPerBtc))}<br><span style="font-size:13px;color:var(--text2)">${fmt(Math.round(avgCostPerBtc * curUsdRub))} ₽</span></div></div>
+  `;
+
+  // Table
+  const historyEl = document.getElementById('historyContent');
+  if (entries.length === 0) {
+    historyEl.innerHTML = `<div class="empty-state"><strong>Журнал пуст</strong>Нажми "+ Добавить запись" чтобы начать отслеживать данные по месяцам.</div>`;
+  } else {
+    let rowsHtml = '';
+    for (const e of entries) {
+      const revUsd = e.btcSold * e.salePrice;
+      const revRub = revUsd * e.usdRub;
+      const profRub = revRub - e.rubElec;
+      const costUsd = e.usdRub > 0 ? e.rubElec / e.usdRub : 0;
+      const costPerBtc = e.btcMined > 0 ? costUsd / e.btcMined : 0;
+      const kept = e.btcMined - e.btcSold;
+      rowsHtml += `
+        <tr>
+          <td><strong>${e.month}</strong></td>
+          <td class="num">${fmt(e.kwh)}</td>
+          <td class="num">${fmt(e.rubElec)} ₽</td>
+          <td class="num accent">${e.btcMined.toFixed(5)}</td>
+          <td class="num">${e.btcSold.toFixed(5)}</td>
+          <td class="num ${kept>=0?'pos':'neg'}">${kept.toFixed(5)}</td>
+          <td class="num">$${fmtEn(e.salePrice)}</td>
+          <td class="num">${e.usdRub}</td>
+          <td class="num">${fmt(Math.round(revRub))} ₽</td>
+          <td class="num ${profRub>=0?'pos':'neg'}">${fmt(Math.round(profRub))} ₽</td>
+          <td class="num muted">$${fmtEn(Math.round(costPerBtc))}</td>
+          <td class="actions-cell">
+            <button class="row-btn" title="Редактировать" onclick="editEntry(${e.id})">✎</button>
+            <button class="row-btn delete" title="Удалить" onclick="deleteEntry(${e.id})">✕</button>
+          </td>
+        </tr>`;
+    }
+    historyEl.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Месяц</th><th>кВтч</th><th>Эл-во ₽</th><th>Намайнено</th><th>Продано</th><th>Осталось</th>
+              <th>Цена $</th><th>Курс ₽</th><th>Доход ₽</th><th>Прибыль ₽</th><th>Себест/BTC</th><th></th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  renderJournalCharts(entries);
+  renderBtcPosition();
+
+  // Restore per-user panel titles
+  const t1 = document.querySelector('#chartPanel1 .panel-title');
+  if (t1) t1.textContent = 'Доход / расходы / прибыль по месяцам (₽)';
+  const t2 = document.querySelector('#chartPanel2 .panel-title');
+  if (t2) t2.textContent = 'Биткоин: добыто / продано / удержано (BTC)';
+  const t3 = document.querySelector('#chartPanel3 .panel-title');
+  if (t3) t3.textContent = 'Себестоимость 1 BTC по месяцам ($)';
+
+  // Restore default chart legends
+  const lg1 = document.querySelector('#chartPanel1 .chart-legend');
+  if (lg1) lg1.innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Доход</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Расходы</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Прибыль</div>`;
+  const lg2 = document.querySelector('#chartPanel2 .chart-legend');
+  if (lg2) lg2.innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Намайнено</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#b46de5"></div>Продано</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Осталось (HODL)</div>`;
+}
+
+// ============================================
+// COMPARE VIEW (D vs G)
+// ============================================
+function computeEntryMetrics(e) {
+  const revUsd = e.btcSold * e.salePrice;
+  const revRub = revUsd * e.usdRub;
+  const profRub = revRub - e.rubElec;
+  const costUsd = e.usdRub > 0 ? e.rubElec / e.usdRub : 0;
+  const costPerBtc = e.btcMined > 0 ? costUsd / e.btcMined : 0;
+  const kept = e.btcMined - e.btcSold;
+  return { revRub, revUsd, profRub, costUsd, costPerBtc, kept,
+    btcMined: e.btcMined, btcSold: e.btcSold, rubElec: e.rubElec, kwh: e.kwh };
+}
+function pctDiff(a, b) {
+  // (G - D) / D * 100 — relative deviation of G vs D
+  if (!isFinite(a) || !isFinite(b) || a === 0) return null;
+  return (b - a) / Math.abs(a) * 100;
+}
+function fmtDiff(val, suffix='') {
+  if (val === null || !isFinite(val)) return '—';
+  return (val > 0 ? '+' : '') + val.toFixed(1) + '%' + suffix;
+}
+
+function renderCompareView() {
+  const dEntries = sortByMonth(loadEntries('D'));
+  const gEntries = sortByMonth(loadEntries('G'));
+
+  // Sum totals per user
+  const sumTot = (entries) => entries.reduce((a, e) => {
+    const m = computeEntryMetrics(e);
+    a.kwh += m.kwh; a.rubElec += m.rubElec;
+    a.btcMined += m.btcMined; a.btcSold += m.btcSold;
+    a.revRub += m.revRub; a.revUsd += m.revUsd;
+    a.profRub += m.profRub; a.costUsd += m.costUsd;
+    return a;
+  }, { kwh:0, rubElec:0, btcMined:0, btcSold:0, revRub:0, revUsd:0, profRub:0, costUsd:0 });
+
+  const totD = sumTot(dEntries);
+  const totG = sumTot(gEntries);
+  const totSum = {
+    kwh: totD.kwh + totG.kwh,
+    rubElec: totD.rubElec + totG.rubElec,
+    btcMined: totD.btcMined + totG.btcMined,
+    btcSold: totD.btcSold + totG.btcSold,
+    revRub: totD.revRub + totG.revRub,
+    profRub: totD.profRub + totG.profRub,
+  };
+  const avgCostD = totD.btcMined > 0 ? totD.costUsd / totD.btcMined : 0;
+  const avgCostG = totG.btcMined > 0 ? totG.costUsd / totG.btcMined : 0;
+
+  // Summary panel
+  const titleEl = document.querySelector('#summaryPanel .panel-title');
+  if (titleEl) {
+    titleEl.innerHTML = 'Сравнение D vs G <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">' +
+      dEntries.length + ' / ' + gEntries.length + ' записей</span>';
+  }
+
+  const minedDiff = pctDiff(totD.btcMined, totG.btcMined);
+  const profitDiff = pctDiff(totD.profRub, totG.profRub);
+  const costDiff = pctDiff(avgCostD, avgCostG);
+
+  const diffColor = (v, inverted=false) => {
+    if (v === null) return 'var(--text2)';
+    const positive = inverted ? v < 0 : v > 0;
+    return positive ? 'var(--green)' : 'var(--red)';
+  };
+
+  document.getElementById('j_summary').innerHTML = `
+    <div class="metric-card"><div class="metric-label" style="color:#4a90e2;">D — намайнено</div><div class="metric-value">${totD.btcMined.toFixed(5)} BTC</div></div>
+    <div class="metric-card"><div class="metric-label" style="color:#f7931a;">G — намайнено</div><div class="metric-value">${totG.btcMined.toFixed(5)} BTC</div></div>
+    <div class="metric-card" style="border:0.5px solid rgba(180,109,229,0.3);background:rgba(180,109,229,0.04);"><div class="metric-label" style="color:#b46de5;">Сумма D+G</div><div class="metric-value">${totSum.btcMined.toFixed(5)} BTC<br><span style="font-size:12px;color:${diffColor(minedDiff)};">Δ G vs D: ${fmtDiff(minedDiff)}</span></div></div>
+
+    <div class="metric-card"><div class="metric-label" style="color:#4a90e2;">D — прибыль реализ.</div><div class="metric-value ${totD.profRub>=0?'pos':'neg'}">${fmt(Math.round(totD.profRub))} ₽</div></div>
+    <div class="metric-card"><div class="metric-label" style="color:#f7931a;">G — прибыль реализ.</div><div class="metric-value ${totG.profRub>=0?'pos':'neg'}">${fmt(Math.round(totG.profRub))} ₽</div></div>
+    <div class="metric-card" style="border:0.5px solid rgba(180,109,229,0.3);background:rgba(180,109,229,0.04);"><div class="metric-label" style="color:#b46de5;">Сумма прибыль</div><div class="metric-value ${totSum.profRub>=0?'pos':'neg'}">${fmt(Math.round(totSum.profRub))} ₽<br><span style="font-size:12px;color:${diffColor(profitDiff)};">Δ G vs D: ${fmtDiff(profitDiff)}</span></div></div>
+
+    <div class="metric-card"><div class="metric-label" style="color:#4a90e2;">D — себест. 1 BTC</div><div class="metric-value">$${fmtEn(Math.round(avgCostD))}</div></div>
+    <div class="metric-card"><div class="metric-label" style="color:#f7931a;">G — себест. 1 BTC</div><div class="metric-value">$${fmtEn(Math.round(avgCostG))}</div></div>
+    <div class="metric-card" style="border:0.5px solid rgba(180,109,229,0.3);background:rgba(180,109,229,0.04);"><div class="metric-label" style="color:#b46de5;">Δ себест. G vs D <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(ниже = лучше)</span></div><div class="metric-value" style="color:${diffColor(costDiff, true)};">${fmtDiff(costDiff)}</div></div>
+  `;
+
+  // Update summary hint
+  const hintBox = document.querySelector('#summaryPanel > div[style*="color:var(--text2)"]');
+  if (hintBox) hintBox.innerHTML = '💡 <strong style="color:var(--text);">Δ G vs D</strong> — относительное отклонение показателей G от D. Положительное (+) = у G больше; отрицательное (−) = у G меньше. Для себестоимости: чем ниже у партнёра, тем эффективнее ферма у него.';
+
+  // History → comparison table
+  const allMonths = Array.from(new Set([...dEntries.map(e=>e.month), ...gEntries.map(e=>e.month)])).sort();
+  const dMap = Object.fromEntries(dEntries.map(e => [e.month, computeEntryMetrics(e)]));
+  const gMap = Object.fromEntries(gEntries.map(e => [e.month, computeEntryMetrics(e)]));
+
+  const historyEl = document.getElementById('historyContent');
+  if (allMonths.length === 0) {
+    historyEl.innerHTML = `<div class="empty-state"><strong>Нет данных</strong>Добавь записи в журналы D и G, чтобы увидеть сравнение.</div>`;
+  } else {
+    let rows = '';
+    for (const m of allMonths) {
+      const d = dMap[m] || null;
+      const g = gMap[m] || null;
+      const dMined = d ? d.btcMined.toFixed(5) : '—';
+      const gMined = g ? g.btcMined.toFixed(5) : '—';
+      const dProf = d ? Math.round(d.profRub) : null;
+      const gProf = g ? Math.round(g.profRub) : null;
+      const dCost = d && d.costPerBtc > 0 ? Math.round(d.costPerBtc) : null;
+      const gCost = g && g.costPerBtc > 0 ? Math.round(g.costPerBtc) : null;
+
+      const minedDiffR = (d && g) ? pctDiff(d.btcMined, g.btcMined) : null;
+      const profDiffR  = (d && g) ? pctDiff(d.profRub, g.profRub) : null;
+      const costDiffR  = (d && g) ? pctDiff(d.costPerBtc, g.costPerBtc) : null;
+
+      const cls = (v) => v === null ? '' : (v > 0 ? 'pos' : 'neg');
+      const sum = (a, b, dec=5) => (a !== null && b !== null) ? (a + b).toFixed(dec) : '—';
+      const sumR = (a, b) => (a !== null && b !== null) ? fmt(a + b) : '—';
+
+      rows += `
+        <tr>
+          <td class="month-cell">${m}</td>
+          <td class="col-D num ${d?'':'missing'}">${dMined}</td>
+          <td class="col-G num ${g?'':'missing'}">${gMined}</td>
+          <td class="col-sum num">${(d&&g) ? (d.btcMined + g.btcMined).toFixed(5) : (d?d.btcMined.toFixed(5):(g?g.btcMined.toFixed(5):'—'))}</td>
+          <td class="col-diff num ${cls(minedDiffR)}">${fmtDiff(minedDiffR)}</td>
+
+          <td class="col-D num ${d?'':'missing'}">${dProf !== null ? fmt(dProf)+' ₽' : '—'}</td>
+          <td class="col-G num ${g?'':'missing'}">${gProf !== null ? fmt(gProf)+' ₽' : '—'}</td>
+          <td class="col-sum num">${sumR(dProf, gProf)} ${(dProf!==null&&gProf!==null)?'₽':''}</td>
+          <td class="col-diff num ${cls(profDiffR)}">${fmtDiff(profDiffR)}</td>
+
+          <td class="col-D num ${dCost?'':'missing'}">${dCost !== null ? '$'+fmtEn(dCost) : '—'}</td>
+          <td class="col-G num ${gCost?'':'missing'}">${gCost !== null ? '$'+fmtEn(gCost) : '—'}</td>
+          <td class="col-diff num ${cls(costDiffR === null ? null : -costDiffR)}">${fmtDiff(costDiffR)}</td>
+        </tr>`;
+    }
+    historyEl.innerHTML = `
+      <div class="compare-table-wrap">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th rowspan="2">Месяц</th>
+              <th colspan="4" style="text-align:center;color:var(--text2);">Намайнено BTC</th>
+              <th colspan="4" style="text-align:center;color:var(--text2);">Прибыль ₽</th>
+              <th colspan="3" style="text-align:center;color:var(--text2);">Себестоимость 1 BTC</th>
+            </tr>
+            <tr>
+              <th class="col-D">D</th><th class="col-G">G</th><th class="col-sum">Σ</th><th class="col-diff">Δ%</th>
+              <th class="col-D">D</th><th class="col-G">G</th><th class="col-sum">Σ</th><th class="col-diff">Δ%</th>
+              <th class="col-D">D</th><th class="col-G">G</th><th class="col-diff">Δ%</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // BTC position panel: hide in DG mode
+  document.getElementById('btcPositionPanel').style.display = 'none';
+
+  // Compare charts
+  renderCompareCharts(allMonths, dMap, gMap);
+}
+
+function renderCompareCharts(months, dMap, gMap) {
+  ['chartPanel1','chartPanel2','chartPanel3'].forEach(id => {
+    document.getElementById(id).style.display = months.length === 0 ? 'none' : 'block';
+  });
+  if (months.length === 0) {
+    [jChart1, jChart2, jChart3].forEach(c => { if (c) c.destroy(); });
+    jChart1 = jChart2 = jChart3 = null;
+    return;
+  }
+
+  // Update panel titles for compare mode
+  const t1 = document.querySelector('#chartPanel1 .panel-title');
+  if (t1) t1.textContent = 'Прибыль реализованная по месяцам — D vs G (тыс. ₽)';
+  const t2 = document.querySelector('#chartPanel2 .panel-title');
+  if (t2) t2.textContent = 'Намайнено BTC по месяцам — D vs G';
+  const t3 = document.querySelector('#chartPanel3 .panel-title');
+  if (t3) t3.textContent = 'Себестоимость 1 BTC по месяцам — D vs G ($)';
+
+  const lg1 = document.querySelector('#chartPanel1 .chart-legend');
+  if (lg1) lg1.innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>D</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>G</div>`;
+  const lg2 = document.querySelector('#chartPanel2 .chart-legend');
+  if (lg2) lg2.innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>D</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>G</div>`;
+
+  const profitD = months.map(m => dMap[m] ? Math.round(dMap[m].profRub / 1000) : null);
+  const profitG = months.map(m => gMap[m] ? Math.round(gMap[m].profRub / 1000) : null);
+  const minedD = months.map(m => dMap[m] ? +dMap[m].btcMined.toFixed(5) : null);
+  const minedG = months.map(m => gMap[m] ? +gMap[m].btcMined.toFixed(5) : null);
+  const costD = months.map(m => dMap[m] && dMap[m].costPerBtc > 0 ? Math.round(dMap[m].costPerBtc) : null);
+  const costG = months.map(m => gMap[m] && gMap[m].costPerBtc > 0 ? Math.round(gMap[m].costPerBtc) : null);
+
+  const lineDataset = (label, data, color) => ({
+    label, data, borderColor: color, backgroundColor: color + '22',
+    borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: color, tension: 0.3, spanGaps: true, fill: false
+  });
+
+  if (jChart1) jChart1.destroy();
+  jChart1 = new Chart(document.getElementById('j_chart1'), {
+    type: 'line',
+    data: { labels: months, datasets: [
+      lineDataset('D', profitD, '#4a90e2'),
+      lineDataset('G', profitG, '#f7931a'),
+    ]},
+    options: chartOpts(v => fmt(v)+'k ₽', ctx => ctx.dataset.label+': '+fmt(ctx.parsed.y)+' тыс. ₽')
+  });
+
+  if (jChart2) jChart2.destroy();
+  jChart2 = new Chart(document.getElementById('j_chart2'), {
+    type: 'line',
+    data: { labels: months, datasets: [
+      lineDataset('D', minedD, '#4a90e2'),
+      lineDataset('G', minedG, '#f7931a'),
+    ]},
+    options: chartOpts(v => v.toFixed(4)+' BTC', ctx => ctx.dataset.label+': '+ctx.parsed.y.toFixed(5)+' BTC')
+  });
+
+  if (jChart3) jChart3.destroy();
+  jChart3 = new Chart(document.getElementById('j_chart3'), {
+    type: 'line',
+    data: { labels: months, datasets: [
+      lineDataset('D', costD, '#4a90e2'),
+      lineDataset('G', costG, '#f7931a'),
+    ]},
+    options: chartOpts(v => '$'+fmtEn(v), ctx => ctx.dataset.label+': $'+fmtEn(ctx.parsed.y))
+  });
+}
+
+function renderJournalCharts(entries) {
+  // Hide chart panels if empty
+  ['chartPanel1','chartPanel2','chartPanel3'].forEach(id => {
+    document.getElementById(id).style.display = entries.length === 0 ? 'none' : 'block';
+  });
+  if (entries.length === 0) {
+    [jChart1, jChart2, jChart3].forEach(c => { if (c) c.destroy(); });
+    jChart1 = jChart2 = jChart3 = null;
+    return;
+  }
+
+  const labels = entries.map(e => e.month);
+  const revenue = entries.map(e => Math.round(e.btcSold * e.salePrice * e.usdRub / 1000));
+  const costs   = entries.map(e => Math.round(e.rubElec / 1000));
+  const profit  = entries.map((e,i) => revenue[i] - costs[i]);
+  const mined   = entries.map(e => +e.btcMined.toFixed(5));
+  const sold    = entries.map(e => +e.btcSold.toFixed(5));
+  const kept    = entries.map((e,i) => +(mined[i] - sold[i]).toFixed(5));
+  const costPerBtc = entries.map(e => e.btcMined > 0 && e.usdRub > 0
+    ? Math.round((e.rubElec / e.usdRub) / e.btcMined) : 0);
+
+  // Chart 1: revenue / costs / profit (bar)
+  if (jChart1) jChart1.destroy();
+  jChart1 = new Chart(document.getElementById('j_chart1'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label:'Доход', data:revenue, backgroundColor:'rgba(29,185,122,0.7)', borderColor:'#1db97a', borderWidth:1 },
+      { label:'Расходы', data:costs, backgroundColor:'rgba(226,84,75,0.7)', borderColor:'#e2544b', borderWidth:1 },
+      { label:'Прибыль', data:profit, backgroundColor:'rgba(74,144,226,0.7)', borderColor:'#4a90e2', borderWidth:1 },
+    ]},
+    options: chartOpts(v => fmt(v)+'k ₽', ctx => ctx.dataset.label+': '+fmt(ctx.parsed.y)+' тыс. ₽')
+  });
+
+  // Chart 2: BTC mined / sold / kept (bar)
+  if (jChart2) jChart2.destroy();
+  jChart2 = new Chart(document.getElementById('j_chart2'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label:'Намайнено', data:mined, backgroundColor:'rgba(247,147,26,0.7)', borderColor:'#f7931a', borderWidth:1 },
+      { label:'Продано', data:sold, backgroundColor:'rgba(180,109,229,0.7)', borderColor:'#b46de5', borderWidth:1 },
+      { label:'Осталось', data:kept, backgroundColor:'rgba(29,185,122,0.7)', borderColor:'#1db97a', borderWidth:1 },
+    ]},
+    options: chartOpts(v => v.toFixed(4)+' BTC', ctx => ctx.dataset.label+': '+ctx.parsed.y.toFixed(5)+' BTC')
+  });
+
+  // Chart 3: cost per BTC (line)
+  if (jChart3) jChart3.destroy();
+  jChart3 = new Chart(document.getElementById('j_chart3'), {
+    type: 'line',
+    data: { labels, datasets: [
+      { label:'Себест. 1 BTC', data:costPerBtc, borderColor:'#f7931a', backgroundColor:'rgba(247,147,26,0.1)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#f7931a', tension:0.3, fill:true }
+    ]},
+    options: chartOpts(v => '$'+fmtEn(v), ctx => 'Себест: $'+fmtEn(ctx.parsed.y))
+  });
+}
+
+// ============================================
+// BTC POSITION / TREASURY PNL
+// ============================================
+let pnlChartInst = null;
+
+function calcPositionTotals() {
+  const entries = loadEntries();
+  return entries.reduce((a, e) => {
+    a.btcMined += e.btcMined;
+    a.btcSold += e.btcSold;
+    const costUsd = e.usdRub > 0 ? e.rubElec / e.usdRub : 0;
+    a.costUsd += costUsd;
+    return a;
+  }, { btcMined: 0, btcSold: 0, costUsd: 0 });
+}
+
+function renderBtcPosition() {
+  const tot = calcPositionTotals();
+  const hodl = tot.btcMined - tot.btcSold;
+  const panel = document.getElementById('btcPositionPanel');
+
+  if (tot.btcMined <= 0 || hodl <= 0) {
+    panel.style.display = 'none';
+    if (pnlChartInst) { pnlChartInst.destroy(); pnlChartInst = null; }
+    return;
+  }
+  panel.style.display = 'block';
+
+  const costBasis = tot.costUsd / tot.btcMined;          // avg cost per BTC mined
+  const hodlInvested = hodl * costBasis;
+  // Минимальный разумный порог: цена ниже $1000 точно мусор (битый API ответ)
+  const isValidBtcPrice = (p) => isFinite(p) && p >= 1000 && p <= 10_000_000;
+  const rawLivePrice = window._liveBtcPrice;
+  const sliderPrice = +document.getElementById('btc_price').value;
+  const curPrice = isValidBtcPrice(rawLivePrice)
+    ? rawLivePrice
+    : (isValidBtcPrice(sliderPrice) ? sliderPrice : 0);
+  const priceReady = curPrice > 0;
+  const curUsdRub = window._liveUsdRub || +document.getElementById('usd_rub').value || 0;
+
+  const hodlValueUsd = priceReady ? hodl * curPrice : 0;
+  const unrealPnlUsd = priceReady ? hodlValueUsd - hodlInvested : 0;
+  const pnlPct = (priceReady && costBasis > 0) ? (curPrice / costBasis - 1) * 100 : 0;
+
+  // Source label for current price
+  let priceSource = '(загружается…)';
+  if (isFinite(rawLivePrice) && rawLivePrice > 0) priceSource = '(live)';
+  else if (sliderPrice > 0) priceSource = '(из слайдера)';
+
+  // Единый стиль "ждём цену" — приглушённая карточка без агрессивных цветов
+  const pendingStyle = 'border:0.5px dashed rgba(255,255,255,0.10);background:rgba(255,255,255,0.015);';
+  const pendingValue = '<span style="color:var(--text3);font-weight:500;">—</span>';
+  const pendingHint  = '<span style="font-size:11px;color:var(--text3);font-weight:400;display:block;margin-top:2px;">подгружаем цену BTC…</span>';
+
+  const pnlCard = !priceReady
+    ? `<div class="metric-card" style="${pendingStyle}">
+        <div class="metric-label">Нереализ. PnL</div>
+        <div class="metric-value" style="font-size:22px;">${pendingValue}${pendingHint}</div>
+      </div>`
+    : `<div class="metric-card" style="border:0.5px solid ${unrealPnlUsd>=0?'rgba(29,185,122,0.4)':'rgba(226,84,75,0.4)'};background:${unrealPnlUsd>=0?'rgba(29,185,122,0.07)':'rgba(226,84,75,0.07)'};">
+        <div class="metric-label">Нереализ. PnL <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">${pnlPct>=0?'(+':'('}${pnlPct.toFixed(1)}%)</span></div>
+        <div class="metric-value ${unrealPnlUsd>=0?'pos':'neg'}">
+          ${unrealPnlUsd>=0?'+':''}$${fmtEn(Math.round(unrealPnlUsd))}<br>
+          <span style="font-size:13px;color:var(--text2)">${unrealPnlUsd>=0?'+':''}${fmt(Math.round(unrealPnlUsd * curUsdRub))} ₽</span>
+        </div>
+      </div>`;
+
+  const valueCard = !priceReady
+    ? `<div class="metric-card" style="${pendingStyle}">
+        <div class="metric-label">Стоимость сейчас</div>
+        <div class="metric-value" style="font-size:22px;">${pendingValue}${pendingHint}</div>
+      </div>`
+    : `<div class="metric-card">
+        <div class="metric-label">Стоимость сейчас</div>
+        <div class="metric-value blue">$${fmtEn(Math.round(hodlValueUsd))}<br>
+          <span style="font-size:13px;color:var(--text2)">${fmt(Math.round(hodlValueUsd * curUsdRub))} ₽</span>
+        </div>
+      </div>`;
+
+  const priceCard = priceReady
+    ? `<div class="metric-card">
+        <div class="metric-label">Текущая цена <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">${priceSource}</span></div>
+        <div class="metric-value">$${fmtEn(Math.round(curPrice))}</div>
+      </div>`
+    : `<div class="metric-card" style="${pendingStyle}">
+        <div class="metric-label">Текущая цена <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">${priceSource}</span></div>
+        <div class="metric-value" style="font-size:22px;">${pendingValue}</div>
+      </div>`;
+
+  document.getElementById('btcPositionCards').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Размер позиции</div>
+      <div class="metric-value accent">${hodl.toFixed(5)} BTC</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Цена входа <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(avg)</span></div>
+      <div class="metric-value">$${fmtEn(Math.round(costBasis))}</div>
+    </div>
+    ${priceCard}
+    <div class="metric-card">
+      <div class="metric-label">Инвестировано в HODL</div>
+      <div class="metric-value">$${fmtEn(Math.round(hodlInvested))}<br>
+        <span style="font-size:13px;color:var(--text2)">${fmt(Math.round(hodlInvested * (curUsdRub||0)))} ₽</span>
+      </div>
+    </div>
+    ${valueCard}
+    ${pnlCard}
+  `;
+
+  // Reset what-if slider to current price unless user touched it (only if price is real)
+  const whatifSlider = document.getElementById('whatif_price');
+  const whatifInput = document.getElementById('whatif_price_input');
+  if (priceReady && !whatifSlider.dataset.userTouched) {
+    const curPrice2 = Math.round(curPrice);
+    whatifSlider.value = Math.min(Math.max(curPrice2, +whatifSlider.min), +whatifSlider.max);
+    whatifInput.value = curPrice2;
+  }
+
+  renderWhatif(hodl, costBasis, curUsdRub, curPrice, priceReady);
+  renderPnlChart(hodl, costBasis, curPrice);
+}
+
+function renderWhatif(hodl, costBasis, curUsdRub, curPrice, priceReady) {
+  const whatifPrice = +document.getElementById('whatif_price').value;
+  const whatifValueUsd = hodl * whatifPrice;
+  const whatifInvested = hodl * costBasis;
+  const whatifPnlUsd = whatifValueUsd - whatifInvested;
+  const whatifPnlPct = costBasis > 0 ? (whatifPrice / costBasis - 1) * 100 : 0;
+  const canCompareToCur = priceReady && curPrice > 0;
+  const vsCurrentPct = canCompareToCur ? (whatifPrice / curPrice - 1) * 100 : null;
+  const rubReady = isFinite(curUsdRub) && curUsdRub > 0;
+
+  document.getElementById('whatifResult').innerHTML = `
+    <div class="compare-card">
+      <h4>Стоимость HODL</h4>
+      <div class="compare-num">$${fmtEn(Math.round(whatifValueUsd))}</div>
+      <div class="compare-sub">${rubReady ? fmt(Math.round(whatifValueUsd * curUsdRub))+' ₽' : '— ₽'}</div>
+      <div class="compare-sub" style="margin-top:4px;">vs текущей цены: ${vsCurrentPct === null
+        ? '<span style="color:var(--text3);">— (ждём цену)</span>'
+        : '<strong style="color:'+(vsCurrentPct>=0?'var(--green)':'var(--red)')+'">'+(vsCurrentPct>=0?'+':'')+vsCurrentPct.toFixed(1)+'%</strong>'}</div>
+    </div>
+    <div class="compare-card ${whatifPnlUsd>=0?'highlight':''}" style="${whatifPnlUsd<0?'border-color:rgba(226,84,75,0.3);background:rgba(226,84,75,0.05);':''}">
+      <h4>Нереализ. PnL при этой цене</h4>
+      <div class="compare-num" style="color:${whatifPnlUsd>=0?'var(--green)':'var(--red)'};">${whatifPnlUsd>=0?'+':''}$${fmtEn(Math.round(whatifPnlUsd))}</div>
+      <div class="compare-sub" style="color:${whatifPnlUsd>=0?'var(--green)':'var(--red)'};">${rubReady ? (whatifPnlUsd>=0?'+':'')+fmt(Math.round(whatifPnlUsd * curUsdRub))+' ₽' : '— ₽'} (${whatifPnlPct>=0?'+':''}${whatifPnlPct.toFixed(1)}%)</div>
+    </div>
+    <div class="compare-card">
+      <h4>Цена безубытка</h4>
+      <div class="compare-num">$${fmtEn(Math.round(costBasis))}</div>
+      <div class="compare-sub">${whatifPrice >= costBasis ? '<span style="color:var(--green);">✓ выше безубытка</span>' : '<span style="color:var(--red);">✗ ниже безубытка</span>'}</div>
+    </div>
+  `;
+}
+
+function renderPnlChart(hodl, costBasis, curPrice) {
+  // Fall back to cost basis when live price isn't available — chart still useful
+  const pivot = (isFinite(curPrice) && curPrice > 0) ? curPrice : costBasis;
+  if (!isFinite(pivot) || pivot <= 0) {
+    if (pnlChartInst) { pnlChartInst.destroy(); pnlChartInst = null; }
+    return;
+  }
+  // Generate 11 price points: -60% to +200% of pivot
+  const points = [];
+  const startMult = 0.4, endMult = 3.0;
+  for (let i = 0; i <= 10; i++) {
+    const mult = startMult + (endMult - startMult) * i / 10;
+    points.push(Math.round(pivot * mult / 1000) * 1000);
+  }
+  // Ensure cost basis is visible on chart by including it
+  if (!points.some(p => Math.abs(p - costBasis) < curPrice * 0.05)) {
+    points.push(Math.round(costBasis));
+    points.sort((a, b) => a - b);
+  }
+
+  const pnls = points.map(p => Math.round(hodl * (p - costBasis)));
+
+  if (pnlChartInst) pnlChartInst.destroy();
+  pnlChartInst = new Chart(document.getElementById('pnlChart'), {
+    type: 'line',
+    data: {
+      labels: points.map(p => '$' + (p/1000).toFixed(0) + 'k'),
+      datasets: [
+        {
+          label: 'PnL $',
+          data: pnls,
+          borderColor: '#f7931a',
+          backgroundColor: 'rgba(247,147,26,0.08)',
+          borderWidth: 2,
+          pointRadius: points.map(p => Math.abs(p - curPrice) < pivot * 0.03 ? 6 : Math.abs(p - costBasis) < pivot * 0.03 ? 6 : 4),
+          pointBackgroundColor: pnls.map(v => v >= 0 ? '#1db97a' : '#e2544b'),
+          pointBorderColor: points.map(p => Math.abs(p - curPrice) < pivot * 0.03 ? '#fff' : Math.abs(p - costBasis) < pivot * 0.03 ? '#fff' : 'transparent'),
+          pointBorderWidth: 2,
+          tension: 0.1,
+          fill: true,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e2330', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          titleColor: '#e8eaf0', bodyColor: '#8b91a8',
+          callbacks: {
+            label: ctx => 'PnL: ' + (ctx.parsed.y>=0?'+':'') + '$' + fmtEn(ctx.parsed.y)
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555d75', font: { size: 12 } } },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            color: '#555d75', font: { size: 12 },
+            callback: v => (v>=0?'+':'') + '$' + fmtEn(Math.round(v/1000)) + 'k'
+          }
+        }
+      }
+    }
+  });
+}
+
+// What-if slider interactivity
+const whatifSlider = document.getElementById('whatif_price');
+const whatifInput = document.getElementById('whatif_price_input');
+
+function updateWhatifFromInteraction() {
+  whatifSlider.dataset.userTouched = '1';
+  whatifInput.value = whatifSlider.value;
+  const tot = calcPositionTotals();
+  const hodl = tot.btcMined - tot.btcSold;
+  if (hodl <= 0) return;
+  const costBasis = tot.btcMined > 0 ? tot.costUsd / tot.btcMined : 0;
+  const curPrice = window._liveBtcPrice || +document.getElementById('btc_price').value;
+  const curUsdRub = window._liveUsdRub || +document.getElementById('usd_rub').value;
+  renderWhatif(hodl, costBasis, curUsdRub, curPrice);
+}
+whatifSlider.addEventListener('input', updateWhatifFromInteraction);
+whatifInput.addEventListener('input', () => {
+  const v = parseFloat(whatifInput.value);
+  if (!isFinite(v)) return;
+  const min = +whatifSlider.min, max = +whatifSlider.max;
+  whatifSlider.value = Math.min(Math.max(v, min), max);
+  whatifSlider.dataset.userTouched = '1';
+  const tot = calcPositionTotals();
+  const hodl = tot.btcMined - tot.btcSold;
+  if (hodl <= 0) return;
+  const costBasis = tot.btcMined > 0 ? tot.costUsd / tot.btcMined : 0;
+  const curPrice = window._liveBtcPrice || +document.getElementById('btc_price').value;
+  const curUsdRub = window._liveUsdRub || +document.getElementById('usd_rub').value;
+  renderWhatif(hodl, costBasis, curUsdRub, curPrice);
+});
+
+// Expose for inline onclick
+window.editEntry = editEntry;
+window.deleteEntry = deleteEntry;
+
+// ============================================
+// LIVE NETWORK DIFFICULTY FETCH
+// ============================================
+// ============================================
+// FETCH HELPERS
+// ============================================
+const fetchT = (url, ms = 7000) => Promise.race([
+  fetch(url, { cache: 'no-store' }),
+  new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+]);
+
+async function tryAll(sources) {
+  for (const src of sources) {
+    try {
+      const v = await src.run();
+      if (isFinite(v) && v > 0) return { value: v, source: src.name };
+    } catch (e) {
+      console.warn('[fetch] ' + src.name + ' failed:', e.message);
+    }
+  }
+  return null;
+}
+
+// --- BTC PRICE in USD ---
+async function fetchBtcPrice() {
+  return tryAll([
+    {
+      name: 'jsDelivr CDN',
+      run: async () => {
+        const r = await fetchT('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/btc.json');
+        const d = await r.json();
+        return d.btc.usd; // USD за 1 BTC
+      }
+    },
+    {
+      name: 'jsDelivr fallback CDN',
+      run: async () => {
+        const r = await fetchT('https://currency-api.pages.dev/v1/currencies/btc.json');
+        const d = await r.json();
+        return d.btc.usd;
+      }
+    },
+    {
+      name: 'CoinGecko',
+      run: async () => {
+        const r = await fetchT('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const d = await r.json();
+        return d.bitcoin.usd;
+      }
+    },
+    {
+      name: 'Binance',
+      run: async () => {
+        const r = await fetchT('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+        const d = await r.json();
+        return parseFloat(d.price);
+      }
+    },
+    {
+      name: 'Coinbase',
+      run: async () => {
+        const r = await fetchT('https://api.coinbase.com/v2/prices/BTC-USD/spot');
+        const d = await r.json();
+        return parseFloat(d.data.amount);
+      }
+    },
+    {
+      name: 'Bitstamp',
+      run: async () => {
+        const r = await fetchT('https://www.bitstamp.net/api/v2/ticker/btcusd/');
+        const d = await r.json();
+        return parseFloat(d.last);
+      }
+    },
+    {
+      name: 'Kraken',
+      run: async () => {
+        const r = await fetchT('https://api.kraken.com/0/public/Ticker?pair=XBTUSD');
+        const d = await r.json();
+        const k = Object.keys(d.result)[0];
+        return parseFloat(d.result[k].c[0]);
+      }
+    },
+    {
+      name: 'blockchain.info',
+      run: async () => {
+        const r = await fetchT('https://blockchain.info/ticker');
+        const d = await r.json();
+        return d.USD.last;
+      }
+    },
+    {
+      name: 'via codetabs',
+      run: async () => {
+        const u = encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const r = await fetchT('https://api.codetabs.com/v1/proxy/?quest=' + u, 12000);
+        const d = await r.json();
+        return d.bitcoin.usd;
+      }
+    },
+    {
+      name: 'via allorigins',
+      run: async () => {
+        const u = encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const r = await fetchT('https://api.allorigins.win/raw?url=' + u, 12000);
+        const d = await r.json();
+        return d.bitcoin.usd;
+      }
+    }
+  ]);
+}
+
+// --- USD/RUB rate ---
+async function fetchUsdRub() {
+  return tryAll([
+    {
+      name: 'ЦБ РФ',
+      run: async () => {
+        const r = await fetchT('https://www.cbr-xml-daily.ru/daily_json.js');
+        const d = await r.json();
+        return d.Valute.USD.Value;
+      }
+    },
+    {
+      name: 'jsDelivr CDN',
+      run: async () => {
+        const r = await fetchT('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+        const d = await r.json();
+        return d.usd.rub;
+      }
+    },
+    {
+      name: 'open.er-api',
+      run: async () => {
+        const r = await fetchT('https://open.er-api.com/v6/latest/USD');
+        const d = await r.json();
+        return d.rates.RUB;
+      }
+    },
+    {
+      name: 'via codetabs',
+      run: async () => {
+        const u = encodeURIComponent('https://www.cbr-xml-daily.ru/daily_json.js');
+        const r = await fetchT('https://api.codetabs.com/v1/proxy/?quest=' + u, 12000);
+        const d = await r.json();
+        return d.Valute.USD.Value;
+      }
+    }
+  ]);
+}
+
+// --- Network difficulty (T) ---
+async function fetchDifficulty() {
+  return tryAll([
+    {
+      name: 'blockchain.info',
+      run: async () => {
+        const r = await fetchT('https://blockchain.info/q/getdifficulty');
+        const t = await r.text();
+        return parseFloat(t) / 1e12;
+      }
+    },
+    {
+      name: 'mempool.space',
+      run: async () => {
+        const r = await fetchT('https://mempool.space/api/v1/blocks');
+        const blocks = await r.json();
+        return blocks[0].difficulty / 1e12;
+      }
+    },
+    {
+      name: 'blockstream.info',
+      run: async () => {
+        const h = await fetchT('https://blockstream.info/api/blocks/tip/height').then(r => r.text());
+        const blk = await fetchT('https://blockstream.info/api/block-height/' + parseInt(h)).then(r => r.text());
+        const data = await fetchT('https://blockstream.info/api/block/' + blk).then(r => r.json());
+        return data.difficulty / 1e12;
+      }
+    },
+    {
+      name: 'btc.com',
+      run: async () => {
+        const r = await fetchT('https://chain.api.btc.com/v3/block/latest');
+        const d = await r.json();
+        return d.data.difficulty / 1e12;
+      }
+    },
+    {
+      name: 'via codetabs (blockchain.info)',
+      run: async () => {
+        const u = encodeURIComponent('https://blockchain.info/q/getdifficulty');
+        const r = await fetchT('https://api.codetabs.com/v1/proxy/?quest=' + u, 12000);
+        const t = await r.text();
+        return parseFloat(t) / 1e12;
+      }
+    },
+    {
+      name: 'via codetabs (mempool)',
+      run: async () => {
+        const u = encodeURIComponent('https://mempool.space/api/v1/blocks');
+        const r = await fetchT('https://api.codetabs.com/v1/proxy/?quest=' + u, 12000);
+        const blocks = await r.json();
+        return blocks[0].difficulty / 1e12;
+      }
+    },
+    {
+      name: 'via allorigins',
+      run: async () => {
+        const u = encodeURIComponent('https://blockchain.info/q/getdifficulty');
+        const r = await fetchT('https://api.allorigins.win/raw?url=' + u, 12000);
+        const t = await r.text();
+        return parseFloat(t) / 1e12;
+      }
+    },
+    {
+      name: 'via corsfix',
+      run: async () => {
+        const r = await fetchT('https://proxy.corsfix.com/?https://blockchain.info/q/getdifficulty', 12000);
+        const t = await r.text();
+        return parseFloat(t) / 1e12;
+      }
+    }
+  ]);
+}
+
+// ============================================
+// RENDER LIVE CARDS
+// ============================================
+function renderLiveCard(prefix, value, source, formatter) {
+  const valEl = document.getElementById('live' + prefix + 'Val');
+  const statusEl = document.getElementById('live' + prefix + 'Status');
+  if (value !== null) {
+    valEl.textContent = formatter(value);
+    statusEl.innerHTML = '<span class="live-dot"></span>live · ' + source;
+    statusEl.className = 'live-card-status ok';
+  } else {
+    valEl.textContent = '—';
+    statusEl.textContent = 'недоступно';
+    statusEl.className = 'live-card-status error';
+  }
+}
+
+function setCardLoading(prefix) {
+  const statusEl = document.getElementById('live' + prefix + 'Status');
+  statusEl.textContent = 'загрузка...';
+  statusEl.className = 'live-card-status loading';
+}
+
+// Sanity-диапазоны для отсечки явно битых ответов API
+const SANITY = {
+  btc:  { min: 1000,    max: 10_000_000 }, // $ за 1 BTC
+  rub:  { min: 30,      max: 500       }, // ₽ за 1 USD
+  diff: { min: 1,       max: 100_000   }, // T (терахеши)
+};
+function sane(v, kind) {
+  return isFinite(v) && v >= SANITY[kind].min && v <= SANITY[kind].max;
+}
+
+async function refreshAllLiveData() {
+  setCardLoading('Btc'); setCardLoading('Rub'); setCardLoading('Diff');
+
+  // Run in parallel
+  const [btc, rub, diff] = await Promise.all([
+    fetchBtcPrice(),
+    fetchUsdRub(),
+    fetchDifficulty()
+  ]);
+
+  if (btc && sane(btc.value, 'btc')) {
+    window._liveBtcPrice = btc.value;
+    renderLiveCard('Btc', btc.value, btc.source, v => '$' + fmt(Math.round(v)));
+  } else {
+    if (btc) console.warn('[live] BTC price out of sanity range:', btc);
+    window._liveBtcPrice = null;
+    renderLiveCard('Btc', null);
+  }
+
+  if (rub && sane(rub.value, 'rub')) {
+    window._liveUsdRub = rub.value;
+    renderLiveCard('Rub', rub.value, rub.source, v => v.toFixed(2) + ' ₽');
+  } else {
+    if (rub) console.warn('[live] USD/RUB out of sanity range:', rub);
+    window._liveUsdRub = null;
+    renderLiveCard('Rub', null);
+  }
+
+  if (diff && sane(diff.value, 'diff')) {
+    window._liveDifficulty = diff.value;
+    renderLiveCard('Diff', diff.value, diff.source, v => v.toFixed(2) + ' T');
+  } else {
+    if (diff) console.warn('[live] Difficulty out of sanity range:', diff);
+    window._liveDifficulty = null;
+    renderLiveCard('Diff', null);
+  }
+}
+
+function applyLiveValue(target) {
+  let live;
+  if (target === 'btc_price') live = window._liveBtcPrice;
+  else if (target === 'usd_rub') live = window._liveUsdRub;
+  else if (target === 'difficulty') live = window._liveDifficulty;
+  if (!live) return false;
+
+  const slider = document.getElementById(target);
+  const input = document.getElementById(target + '_input');
+  const min = +slider.min, max = +slider.max;
+  const clamped = Math.min(Math.max(live, min), max);
+  slider.value = clamped;
+  if (input) input.value = (target === 'btc_price' || target === 'usd_rub') ? live.toFixed(2) : live.toFixed(2);
+  slider.dispatchEvent(new Event('input'));
+  return true;
+}
+
+function applyAllLive() {
+  let count = 0;
+  ['btc_price', 'usd_rub', 'difficulty'].forEach(t => { if (applyLiveValue(t)) count++; });
+  if (count === 0) alert('Нет загруженных live-значений — сначала "Обновить"');
+}
+
+// After live data refreshes, re-render journal so HODL value updates
+const _origRefreshAll = refreshAllLiveData;
+refreshAllLiveData = async function() {
+  await _origRefreshAll();
+  if (document.getElementById('tab-journal').classList.contains('active')) {
+    renderJournal();
+  }
+};
+
+document.getElementById('refreshAllBtn').addEventListener('click', refreshAllLiveData);
+document.getElementById('applyAllBtn').addEventListener('click', applyAllLive);
+
+// Individual card clicks → apply just that value
+document.querySelectorAll('.live-card').forEach(card => {
+  card.addEventListener('click', (e) => {
+    // Don't trigger if clicking on buttons (none here, but be safe)
+    if (e.target.tagName === 'BUTTON') return;
+    const target = card.dataset.target;
+    if (target) applyLiveValue(target);
+  });
+});
+
+// ============================================
+// INIT
+// ============================================
+['btc_price','usd_rub','difficulty','hashrate'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateShared);
+});
+['btc_pct','s_elec_kwh','s_elec_rate'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const btcPrice = +document.getElementById('btc_price').value;
+    const usdRub   = +document.getElementById('usd_rub').value;
+    const diff     = +document.getElementById('difficulty').value;
+    const hashrate = +document.getElementById('hashrate').value;
+    updateSpecial(btcPrice, usdRub, diff, hashrate);
+  });
+});
+['c_elec_kwh','c_elec_rub','c_other'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const btcPrice = +document.getElementById('btc_price').value;
+    const usdRub   = +document.getElementById('usd_rub').value;
+    const diff     = +document.getElementById('difficulty').value;
+    const hashrate = +document.getElementById('hashrate').value;
+    updateClassic(btcPrice, usdRub, diff, hashrate);
+  });
+});
+
+
+// ============================================
+// SLIDER ↔ NUMBER INPUT SYNC
+// ============================================
+function bindSliderInput(sliderId) {
+  const slider = document.getElementById(sliderId);
+  const input  = document.getElementById(sliderId + '_input');
+  if (!slider || !input) return;
+
+  // Number input -> slider (but mark that input is the source of truth this moment)
+  input.addEventListener('input', () => {
+    const v = parseFloat(input.value);
+    if (!isFinite(v)) return;
+    const min = +slider.min, max = +slider.max;
+    slider.value = Math.min(Math.max(v, min), max);
+    // Trigger recalc — input retains user's actual typed value (since it's focused)
+    slider.dispatchEvent(new Event('input'));
+  });
+
+  // Blur: clamp visible value too
+  input.addEventListener('blur', () => {
+    const v = parseFloat(input.value);
+    if (!isFinite(v)) { input.value = slider.value; return; }
+    const min = +slider.min, max = +slider.max;
+    const clamped = Math.min(Math.max(v, min), max);
+    if (clamped !== v) input.value = clamped;
+  });
+}
+
+['btc_price','hashrate','usd_rub','difficulty',
+ 's_elec_kwh','s_elec_rate','btc_pct',
+ 'c_elec_kwh','c_elec_rub','c_other'
+].forEach(bindSliderInput);
+
+
+// Auto-select content on focus for all number/numeric inputs (better UX)
+document.querySelectorAll('input[type="number"], .slider-val-input').forEach(inp => {
+  inp.addEventListener('focus', () => {
+    setTimeout(() => { try { inp.select(); } catch(e) {} }, 0);
+  });
+  inp.addEventListener('mouseup', (e) => {
+    // Only prevent default if there's no existing selection
+    if (inp.selectionStart === inp.selectionEnd) {
+      e.preventDefault();
+      inp.select();
+    }
+  });
+});
+
+updateShared();
+// Reflect restored currentUser in the segment switcher
+document.querySelectorAll('.user-seg').forEach(b => {
+  b.classList.toggle('active', b.dataset.user === currentUser);
+});
+renderJournal();
+refreshAllLiveData();
+</script>
+</body>
+</html>

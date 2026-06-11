@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Личные бэкапы (если будете класть в репо рядом — лучше не коммитить приватные данные)
+mining_journal_backup_*.json
+mining_journal_*.csv
