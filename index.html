@@ -895,6 +895,20 @@
   <!-- TAB 3: Journal -->
   <div class="tab-section" id="tab-journal">
 
+    <!-- Lock-screen (показывается если журнал не разблокирован) -->
+    <div id="journalLock" style="display:none; padding: 48px 24px; text-align: center; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin: 16px 0;">
+      <div style="font-size: 56px; margin-bottom: 14px;">🔒</div>
+      <div style="font-size: 19px; font-weight: 600; color: var(--text); margin-bottom: 6px;">Журнал заблокирован</div>
+      <div style="font-size: 13px; color: var(--text2); margin-bottom: 22px; max-width: 360px; margin-left: auto; margin-right: auto; line-height: 1.6;">
+        Доступ только для владельцев. Введи пароль чтобы продолжить.
+      </div>
+      <div style="max-width: 280px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px;">
+        <input type="password" id="journalPasswordInput" class="gh-password-input" placeholder="пароль" autocomplete="current-password" style="text-align:center;">
+        <div id="journalPasswordError" style="color: var(--red); font-size: 12px; display: none;"></div>
+        <button class="btn primary" id="journalUnlockBtn">Разблокировать</button>
+      </div>
+    </div>
+
     <div class="user-switcher" id="userSwitcher">
       <button class="user-seg user-D" data-user="D">D <span class="seg-badge" id="badge_D">0</span></button>
       <button class="user-seg user-G active" data-user="G">G <span class="seg-badge" id="badge_G">0</span></button>
@@ -909,6 +923,7 @@
       <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none;">
       <button id="ghSyncBtn" title="Синхронизация с GitHub"><span class="gh-dot">⚫</span> Sync</button>
       <div class="spacer"></div>
+      <button class="btn" id="journalLockBtn" title="Заблокировать журнал на этом устройстве">🔒 Закрыть</button>
       <button class="btn danger" id="clearAllBtn">Очистить всё</button>
     </div>
 
@@ -1051,51 +1066,6 @@
 
 </div>
 
-<!-- ===== Password (unlock/setup) modal ===== -->
-<div class="gh-modal" id="passwordModal">
-  <div class="gh-modal-inner" style="max-width:440px;">
-    <div class="gh-modal-header">
-      <h3 id="passwordModalTitle">🔒 Введите пароль</h3>
-    </div>
-
-    <div class="gh-section" id="passwordModalIntro">
-      <div class="gh-status-box" id="passwordModalDesc"></div>
-    </div>
-
-    <div class="gh-section">
-      <div class="gh-section-title" id="passwordModalLabel">Пароль</div>
-      <input type="password" id="passwordInput" class="gh-password-input" placeholder="••••••••" autocomplete="current-password">
-      <div class="gh-section" id="passwordConfirmRow" style="display:none;">
-        <div class="gh-section-title">Повторите пароль</div>
-        <input type="password" id="passwordConfirmInput" class="gh-password-input" placeholder="••••••••" autocomplete="new-password">
-      </div>
-      <div class="gh-help" id="passwordError" style="color:var(--red);display:none;margin-top:8px;"></div>
-    </div>
-
-    <div class="gh-section">
-      <div class="gh-toggle-row">
-        <input type="checkbox" id="passwordRemember" checked>
-        <label for="passwordRemember">Запомнить на этом устройстве (иначе спросим при следующем заходе)</label>
-      </div>
-    </div>
-
-    <div class="gh-modal-actions">
-      <button class="btn primary" id="passwordSubmit">Разблокировать</button>
-      <button class="btn ghost" id="passwordCancel">Отмена</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Journal lock-screen overlay ===== -->
-<div id="journalLock" style="display:none; padding: 40px 20px; text-align: center; background: var(--bg2); border: 0.5px dashed var(--border2); border-radius: var(--radius-lg); margin: 16px 0;">
-  <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.6;">🔒</div>
-  <div style="font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px;">Журнал заблокирован</div>
-  <div style="font-size: 13px; color: var(--text2); margin-bottom: 20px; max-width: 380px; margin-left: auto; margin-right: auto; line-height: 1.6;">
-    Данные журнала зашифрованы. Введи пароль чтобы получить доступ к записям, графикам и аналитике.
-  </div>
-  <button class="btn primary" id="unlockJournalBtn">🔑 Разблокировать</button>
-</div>
-
 <!-- ===== GitHub Sync modal ===== -->
 <div class="gh-modal" id="ghSyncModal">
   <div class="gh-modal-inner">
@@ -1107,20 +1077,6 @@
     <div class="gh-section">
       <div class="gh-section-title">Состояние</div>
       <div class="gh-status-box" id="ghSyncModalStatus">—</div>
-    </div>
-
-    <div class="gh-section">
-      <div class="gh-section-title">🔐 Пароль шифрования</div>
-      <div class="gh-status-box" id="cryptoStatusBox">—</div>
-      <div class="gh-modal-actions" style="margin-top:10px; padding-top:0; border:none;">
-        <button class="btn small" id="cryptoSetupBtn" style="display:none;">Задать пароль</button>
-        <button class="btn small" id="cryptoChangeBtn" style="display:none;">Сменить пароль</button>
-        <button class="btn small ghost" id="cryptoForgetBtn" style="display:none;">Забыть пароль на устройстве</button>
-      </div>
-      <div class="gh-help">
-        Данные в репо зашифрованы AES-256. Пароль <strong style="color:var(--text);">никогда не уходит на сервер</strong>, хранится только в этом браузере. Без пароля файл — бессмысленный мусор.<br>
-        <strong style="color:var(--red);">⚠ Восстановить забытый пароль невозможно</strong> — это математическое свойство AES-GCM. Запиши в надёжное место.
-      </div>
     </div>
 
     <div class="gh-section">
@@ -1471,7 +1427,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     // Re-render charts when switching to journal (Chart.js needs visible canvas)
     if (btn.dataset.tab === 'journal') {
-      setTimeout(() => renderJournal(), 50);
+      setTimeout(() => {
+        if (typeof updateJournalLockUI === 'function') updateJournalLockUI();
+        renderJournal();
+      }, 50);
     }
   });
 });
@@ -3028,250 +2987,91 @@ document.querySelectorAll('.user-seg').forEach(b => {
 });
 renderJournal();
 refreshAllLiveData();
+// Применяем lock-screen состояние сразу при загрузке
+setTimeout(() => { if (typeof updateJournalLockUI === 'function') updateJournalLockUI(); }, 0);
 
 // ============================================
-// CRYPTO MODULE (AES-GCM-256 + PBKDF2-SHA256)
+// JOURNAL PASSWORD GATE (простой захардкоженный пароль)
 // ============================================
-// Данные журнала в репо хранятся зашифрованными. Пароль знают только владелец
-// и партнёр (передаётся лично, никуда не отправляется). Без пароля файл в
-// репо выглядит как бессмысленный base64-мусор. Пароль сохраняется в
-// localStorage только если юзер поставил «Запомнить меня».
+// Доступ к разделу "Журнал" только по паролю. Пароль 'hellobro1' — хэш SHA-256
+// захардкожен в коде. Сам пароль никогда не светится открытым текстом.
+// Это защита UI от случайных посетителей, не криптография данных:
+// data/journal.json в репо лежит plaintext.
 
-const CRYPTO_PASS_KEY  = 'mining_crypto_pass_v1';
-const CRYPTO_KDF_ITER  = 200_000;
-const CRYPTO_SALT_LEN  = 16;
-const CRYPTO_IV_LEN    = 12;
-let _cryptoPasswordMemory = null;  // если юзер не выбрал «Запомнить»
+const JOURNAL_PASSWORD_HASH = 'ee55f38dcfb85c9de521b60329625dec6e9560df1294885a3bee1a3efec48e58';
+const JOURNAL_UNLOCKED_KEY  = 'mining_journal_unlocked_v1';
 
-function cryptoGetPassword() {
-  if (_cryptoPasswordMemory) return _cryptoPasswordMemory;
-  try { return localStorage.getItem(CRYPTO_PASS_KEY) || ''; } catch(e) { return ''; }
-}
-function cryptoSetPassword(pass, persist) {
-  if (persist) {
-    try { localStorage.setItem(CRYPTO_PASS_KEY, pass); } catch(e) {}
-    _cryptoPasswordMemory = null;
-  } else {
-    _cryptoPasswordMemory = pass;
-    try { localStorage.removeItem(CRYPTO_PASS_KEY); } catch(e) {}
-  }
-}
-function cryptoClearPassword() {
-  _cryptoPasswordMemory = null;
-  try { localStorage.removeItem(CRYPTO_PASS_KEY); } catch(e) {}
+async function sha256Hex(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function b64encode(bytes) {
-  let s = ''; for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s);
+function isJournalUnlocked() {
+  try { return localStorage.getItem(JOURNAL_UNLOCKED_KEY) === '1'; } catch(e) { return false; }
 }
-function b64decode(s) {
-  const bin = atob(s);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-async function _cryptoDeriveKey(password, salt) {
-  const enc = new TextEncoder();
-  const material = await crypto.subtle.importKey(
-    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: CRYPTO_KDF_ITER, hash: 'SHA-256' },
-    material,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-async function cryptoEncrypt(payload, password) {
-  const salt = crypto.getRandomValues(new Uint8Array(CRYPTO_SALT_LEN));
-  const iv = crypto.getRandomValues(new Uint8Array(CRYPTO_IV_LEN));
-  const key = await _cryptoDeriveKey(password, salt);
-  const enc = new TextEncoder();
-  const plaintext = enc.encode(JSON.stringify(payload));
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
-  return {
-    schemaVersion: 2,
-    encrypted: true,
-    algo: 'AES-GCM-256',
-    kdf:  'PBKDF2-SHA256-' + CRYPTO_KDF_ITER,
-    salt: b64encode(salt),
-    iv:   b64encode(iv),
-    ciphertext: b64encode(new Uint8Array(ciphertext)),
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-async function cryptoDecrypt(blob, password) {
-  if (!blob || !blob.encrypted) return blob;
-  if (!password) { const e = new Error('NO_PASSWORD'); e.code = 'NO_PASSWORD'; throw e; }
+function setJournalUnlocked(v) {
   try {
-    const salt = b64decode(blob.salt);
-    const iv = b64decode(blob.iv);
-    const ct = b64decode(blob.ciphertext);
-    const key = await _cryptoDeriveKey(password, salt);
-    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-    return JSON.parse(new TextDecoder().decode(plain));
-  } catch(e) {
-    const err = new Error('WRONG_PASSWORD');
-    err.code = 'WRONG_PASSWORD';
-    throw err;
-  }
+    if (v) localStorage.setItem(JOURNAL_UNLOCKED_KEY, '1');
+    else localStorage.removeItem(JOURNAL_UNLOCKED_KEY);
+  } catch(e) {}
 }
 
-// ---- Password modal + journal lock UI ----
-// Режимы: 'unlock' (расшифровать существующий), 'setup' (задать впервые),
-//         'change' (сменить, требуется и старый и новый)
-let _passwordModalMode = 'unlock';
-
-function showPasswordModal(opts = {}) {
-  _passwordModalMode = opts.mode || 'unlock';
-  const modal = document.getElementById('passwordModal');
-  const title = document.getElementById('passwordModalTitle');
-  const desc  = document.getElementById('passwordModalDesc');
-  const label = document.getElementById('passwordModalLabel');
-  const confirmRow = document.getElementById('passwordConfirmRow');
-  const submitBtn = document.getElementById('passwordSubmit');
-  const err = document.getElementById('passwordError');
-  const input = document.getElementById('passwordInput');
-  const confirm = document.getElementById('passwordConfirmInput');
-
-  input.value = ''; confirm.value = '';
-  err.style.display = opts.error ? 'block' : 'none';
-  err.textContent = opts.error || '';
-
-  if (_passwordModalMode === 'unlock') {
-    title.textContent = '🔒 Введите пароль журнала';
-    desc.innerHTML = 'Данные журнала зашифрованы. Пароль знают только владельцы (передаётся лично) и хранится только в твоём браузере. Без него файл в репо выглядит как мусор.';
-    label.textContent = 'Пароль';
-    confirmRow.style.display = 'none';
-    submitBtn.textContent = 'Разблокировать';
-  } else if (_passwordModalMode === 'setup') {
-    title.textContent = '🔐 Задайте пароль журнала';
-    desc.innerHTML = 'Это первый запуск синхронизации. Придумай <strong style="color:var(--text);">надёжный пароль</strong> (8+ символов) — им шифруются ВСЕ данные журнала в облаке. <span style="color:var(--red);">Запиши пароль в надёжное место — восстановить его невозможно</span>. Этот же пароль введёт партнёр.';
-    label.textContent = 'Новый пароль';
-    confirmRow.style.display = 'block';
-    submitBtn.textContent = 'Создать пароль и зашифровать';
-  } else if (_passwordModalMode === 'change') {
-    title.textContent = '🔄 Сменить пароль';
-    desc.innerHTML = 'Введи <strong style="color:var(--text);">новый</strong> пароль. Все данные будут перешифрованы. Передай новый пароль партнёру — старый перестанет работать.';
-    label.textContent = 'Новый пароль';
-    confirmRow.style.display = 'block';
-    submitBtn.textContent = 'Сменить пароль';
+async function tryUnlockJournal(password) {
+  const h = await sha256Hex(password || '');
+  if (h === JOURNAL_PASSWORD_HASH) {
+    setJournalUnlocked(true);
+    updateJournalLockUI();
+    return true;
   }
-
-  modal.classList.add('open');
-  setTimeout(() => input.focus(), 50);
-}
-function hidePasswordModal() {
-  const modal = document.getElementById('passwordModal');
-  if (modal) modal.classList.remove('open');
+  return false;
 }
 
-async function handlePasswordSubmit() {
-  const input = document.getElementById('passwordInput');
-  const confirm = document.getElementById('passwordConfirmInput');
-  const err = document.getElementById('passwordError');
-  const remember = document.getElementById('passwordRemember').checked;
-  const pass = input.value;
-
-  err.style.display = 'none';
-
-  if (!pass) {
-    err.textContent = 'Введите пароль'; err.style.display = 'block'; return;
-  }
-
-  if (_passwordModalMode === 'setup' || _passwordModalMode === 'change') {
-    if (pass.length < 8) {
-      err.textContent = 'Минимум 8 символов'; err.style.display = 'block'; return;
-    }
-    if (pass !== confirm.value) {
-      err.textContent = 'Пароли не совпадают'; err.style.display = 'block'; return;
-    }
-    cryptoSetPassword(pass, remember);
-    hidePasswordModal();
-    // Принудительно перешифровываем (force save)
-    setGhStatus('syncing');
-    try {
-      // Загружаем актуальную версию
-      const { blob, sha } = await ghLoadBlob();
-      let payload;
-      if (blob && blob.encrypted) {
-        // Old encrypted blob — был зашифрован старым паролем (для 'change' случая)
-        // Нужно расшифровать старым паролем. Но мы его уже не знаем.
-        // Это сценарий некорректен для setup. Для change нужно сначала разлочить.
-        // Применяем local payload
-        payload = ghBuildPayload();
-      } else if (blob) {
-        payload = blob;
-      } else {
-        payload = ghBuildPayload();
-      }
-      // Мерджим с локальным
-      const local = ghBuildPayload();
-      const merged = ghMergePayload(local, payload);
-      ghApplyPayload(merged);
-      if (ghGetToken()) {
-        await ghSaveData(merged, sha);
-      }
-      setGhStatus('ok');
-      updateJournalLockUI();
-      if (document.getElementById('tab-journal').classList.contains('active')) renderJournal();
-    } catch(e) {
-      setGhStatus('error', e.message);
-      console.warn('[crypto-setup]', e);
-    }
-    return;
-  }
-
-  // unlock mode: проверяем пароль через расшифровку blob
-  cryptoSetPassword(pass, remember);
-  hidePasswordModal();
-  await ghSyncNow({ force: true });
+function lockJournal() {
+  setJournalUnlocked(false);
   updateJournalLockUI();
 }
 
-// Показ/скрытие lock-screen в журнале в зависимости от того,
-// нужен пароль и есть ли он
 function updateJournalLockUI() {
   const lock = document.getElementById('journalLock');
   if (!lock) return;
-  const needPass = _ghSyncState.status === 'locked';
-  if (needPass) {
-    // Скрываем основной UI журнала и показываем lock
-    document.querySelectorAll('#tab-journal > *').forEach(el => {
-      if (el.id !== 'journalLock' && el.id !== 'userSwitcher') el.style.display = 'none';
-    });
-    lock.style.display = 'block';
-  } else {
-    // Восстанавливаем UI
+  const unlocked = isJournalUnlocked();
+  if (unlocked) {
     lock.style.display = 'none';
     document.querySelectorAll('#tab-journal > *').forEach(el => {
       if (el.id !== 'journalLock') el.style.display = '';
     });
+  } else {
+    lock.style.display = 'block';
+    document.querySelectorAll('#tab-journal > *').forEach(el => {
+      if (el.id !== 'journalLock') el.style.display = 'none';
+    });
   }
 }
 
-// Обработчики
-document.addEventListener('click', (e) => {
-  if (e.target && e.target.id === 'passwordSubmit') {
-    handlePasswordSubmit();
-  } else if (e.target && e.target.id === 'passwordCancel') {
-    hidePasswordModal();
-  } else if (e.target && e.target.id === 'unlockJournalBtn') {
-    showPasswordModal({ mode: 'unlock' });
+// Кнопка разблокировки / ввод пароля
+document.addEventListener('click', async (e) => {
+  if (e.target && e.target.id === 'journalUnlockBtn') {
+    const input = document.getElementById('journalPasswordInput');
+    const errEl = document.getElementById('journalPasswordError');
+    errEl.style.display = 'none';
+    const ok = await tryUnlockJournal(input.value);
+    if (!ok) {
+      errEl.textContent = 'Неверный пароль';
+      errEl.style.display = 'block';
+      input.value = '';
+      input.focus();
+    } else {
+      input.value = '';
+    }
+  } else if (e.target && e.target.id === 'journalLockBtn') {
+    if (confirm('Заблокировать журнал на этом устройстве?')) lockJournal();
   }
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && document.getElementById('passwordModal').classList.contains('open')) {
-    const inMod = e.target.closest('#passwordModal');
-    if (inMod) { e.preventDefault(); handlePasswordSubmit(); }
-  }
-  if (e.key === 'Escape' && document.getElementById('passwordModal').classList.contains('open')) {
-    hidePasswordModal();
+  if (e.key === 'Enter' && e.target && e.target.id === 'journalPasswordInput') {
+    e.preventDefault();
+    document.getElementById('journalUnlockBtn').click();
   }
 });
 
@@ -3280,7 +3080,7 @@ document.addEventListener('keydown', (e) => {
 // ============================================
 // Хранит снимок всех журналов (D + G + кеш сложности) в файле data/journal.json
 // в репозитории KiberTec/mining-calculator через GitHub Contents API.
-// Файл шифруется AES-GCM-256 паролем — без него только мусор.
+// Данные plaintext. Защита UI (от случайных правок) — через password gate выше.
 // При конфликте (кто-то записал параллельно) делаем merge: для каждого месяца
 // у каждого пользователя оставляется более новая запись (по id-timestamp создания).
 
@@ -3326,65 +3126,39 @@ function setGhStatus(status, error = null) {
     try { localStorage.setItem(GH_LASTSYNC_KEY, String(Date.now())); } catch(e) {}
   }
   renderSyncIndicator();
-  if (typeof updateJournalLockUI === 'function') updateJournalLockUI();
 }
 
-// ---- API ----
-// Возвращает { blob, sha } где blob — сырое содержимое файла (либо plaintext payload,
-// либо зашифрованный конверт {encrypted:true, ...}).
-async function ghLoadBlob() {
+// ---- API (plaintext) ----
+async function ghLoadData() {
   const headers = { 'Accept': 'application/vnd.github+json' };
   const token = ghGetToken();
   if (token) headers['Authorization'] = 'token ' + token;
   const r = await fetch(`${GH_API}?ref=${GH_CONFIG.branch}&t=${Date.now()}`, {
     headers, cache: 'no-store'
   });
-  if (r.status === 404) return { blob: null, sha: null };
+  if (r.status === 404) return { payload: null, sha: null };
   if (!r.ok) throw new Error('Load HTTP ' + r.status);
   const data = await r.json();
   try { localStorage.setItem(GH_SHA_KEY, data.sha); } catch(e) {}
-  let blob = null;
-  try { blob = JSON.parse(b64ToUtf8(data.content)); } catch(e) {
+  let payload = null;
+  try {
+    const blob = JSON.parse(b64ToUtf8(data.content));
+    // Совместимость со старым шифрованным форматом: если файл оказался encrypted
+    // (наследие предыдущих экспериментов) — игнорируем содержимое, при следующем
+    // save файл перезапишется plaintext'ом.
+    payload = blob && blob.encrypted ? null : blob;
+  } catch(e) {
     throw new Error('Не удалось распарсить journal.json: ' + e.message);
   }
-  return { blob, sha: data.sha };
+  return { payload, sha: data.sha };
 }
 
-// Возвращает { payload, sha, encrypted } — расшифровывает blob если нужно
-async function ghLoadData() {
-  const { blob, sha } = await ghLoadBlob();
-  if (!blob) return { payload: null, sha: null, encrypted: false };
-  if (blob.encrypted) {
-    const pass = cryptoGetPassword();
-    if (!pass) {
-      const e = new Error('NO_PASSWORD');
-      e.code = 'NO_PASSWORD';
-      throw e;
-    }
-    const payload = await cryptoDecrypt(blob, pass);
-    return { payload, sha, encrypted: true };
-  }
-  return { payload: blob, sha, encrypted: false };
-}
-
-// Шифрует payload (если есть пароль) и пушит в GitHub
 async function ghSaveData(payload, sha) {
   const token = ghGetToken();
   if (!token) throw new Error('PAT не настроен');
-  const pass = cryptoGetPassword();
-  // По умолчанию шифруем (если пароль есть). Без пароля сохраняем plaintext,
-  // но это путь только для самой первой инициализации (когда юзер ещё не задал
-  // пароль). После задания пароля все save'ы — encrypted.
-  let bodyContent;
-  if (pass) {
-    const encBlob = await cryptoEncrypt(payload, pass);
-    bodyContent = JSON.stringify(encBlob, null, 2) + '\n';
-  } else {
-    bodyContent = JSON.stringify(payload, null, 2) + '\n';
-  }
   const body = {
     message: 'Update journal (' + new Date().toISOString() + ')',
-    content: utf8ToB64(bodyContent),
+    content: utf8ToB64(JSON.stringify(payload, null, 2) + '\n'),
     branch:  GH_CONFIG.branch,
   };
   if (sha) body.sha = sha;
@@ -3482,44 +3256,10 @@ async function ghSyncNow(opts = {}) {
   setGhStatus('syncing');
 
   try {
-    // 1) Сначала тянем сырой blob, чтобы узнать encrypted ли он
-    const { blob: remoteBlob, sha: remoteSha } = await ghLoadBlob();
-    let remote = null;
-    const isEncrypted = !!(remoteBlob && remoteBlob.encrypted);
-
-    if (remoteBlob) {
-      if (isEncrypted) {
-        const pass = cryptoGetPassword();
-        if (!pass) {
-          // Файл зашифрован, пароля нет → ждём ввода пароля
-          setGhStatus('locked');
-          _ghSyncState.inFlight = false;
-          showPasswordModal({ mode: 'unlock' });
-          return;
-        }
-        try {
-          remote = await cryptoDecrypt(remoteBlob, pass);
-        } catch(e) {
-          if (e.code === 'WRONG_PASSWORD') {
-            cryptoClearPassword();
-            setGhStatus('locked');
-            _ghSyncState.inFlight = false;
-            showPasswordModal({ mode: 'unlock', error: 'Неверный пароль' });
-            return;
-          }
-          throw e;
-        }
-      } else {
-        remote = remoteBlob;
-      }
-    }
-
+    const { payload: remote } = await ghLoadData();
     const local = ghBuildPayload();
-
-    // 2) Мерджим
     const merged = remote ? ghMergePayload(local, remote) : local;
 
-    // 3) Применяем merged если есть отличия
     const beforeApply = ghBuildPayload();
     if (!payloadEqual(merged, beforeApply)) {
       ghApplyPayload(merged);
@@ -3530,10 +3270,9 @@ async function ghSyncNow(opts = {}) {
       }
     }
 
-    // 4) Пушим если есть изменения
     if (!payloadEqual(merged, remote)) {
       if (!ghGetToken()) {
-        setGhStatus(isEncrypted ? 'ok' : 'readonly');
+        setGhStatus('readonly');
         _ghSyncState.inFlight = false;
         return;
       }
@@ -3541,7 +3280,6 @@ async function ghSyncNow(opts = {}) {
         await ghSaveData(merged, localStorage.getItem(GH_SHA_KEY));
       } catch(e) {
         if (e.conflict) {
-          // Перетягиваем актуальный blob и мерджим
           const fresh = await ghLoadData();
           const remerged = ghMergePayload(merged, fresh.payload);
           ghApplyPayload(remerged);
@@ -3553,16 +3291,10 @@ async function ghSyncNow(opts = {}) {
     }
 
     setGhStatus(ghGetToken() ? 'ok' : 'readonly');
-    hidePasswordModal();
   } catch(e) {
     console.warn('[gh-sync]', e);
-    if (e.code === 'NO_PASSWORD' || e.code === 'WRONG_PASSWORD') {
-      setGhStatus('locked');
-      showPasswordModal({ mode: 'unlock', error: e.code === 'WRONG_PASSWORD' ? 'Неверный пароль' : null });
-    } else {
-      setGhStatus('error', e.message);
-      _ghSyncState.retryAt = Date.now() + 30000;
-    }
+    setGhStatus('error', e.message);
+    _ghSyncState.retryAt = Date.now() + 30000;
   } finally {
     _ghSyncState.inFlight = false;
   }
@@ -3592,7 +3324,6 @@ function renderSyncIndicator() {
   const disabled = ghIsDisabled();
   let dot = '⚫', text = '', cls = '';
   if (disabled) { dot = '⚫'; text = 'Sync выкл.'; cls = 'gh-off'; }
-  else if (_ghSyncState.status === 'locked') { dot = '🔒'; text = 'Заблокировано'; cls = 'gh-locked'; }
   else if (_ghSyncState.status === 'syncing') { dot = '🟡'; text = 'Синхронизация…'; cls = 'gh-syncing'; }
   else if (_ghSyncState.status === 'ok')      { dot = '🟢'; text = 'Синхронизировано'; cls = 'gh-ok'; }
   else if (_ghSyncState.status === 'readonly'){ dot = '🔵'; text = 'Только чтение'; cls = 'gh-ro'; }
@@ -3625,7 +3356,6 @@ function updateModalStatus() {
   html += '<div><strong>Файл:</strong> <code>' + GH_CONFIG.file + '</code></div>';
   html += '<div><strong>Состояние:</strong> ';
   if (ghIsDisabled()) html += '<span style="color:var(--text2);">отключено</span>';
-  else if (_ghSyncState.status === 'locked') html += '<span style="color:var(--amber);">заблокировано — нужен пароль</span>';
   else if (_ghSyncState.status === 'ok') html += '<span style="color:var(--green);">синхронизировано (запись доступна)</span>';
   else if (_ghSyncState.status === 'readonly') html += '<span style="color:var(--blue);">только чтение (PAT не настроен)</span>';
   else if (_ghSyncState.status === 'syncing') html += '<span style="color:var(--amber);">синхронизация…</span>';
@@ -3634,40 +3364,6 @@ function updateModalStatus() {
   html += '</div>';
   html += '<div><strong>Последняя синхронизация:</strong> ' + fmtTimeAgo(lastSync) + '</div>';
   stat.innerHTML = html;
-  updateCryptoStatusBox();
-}
-
-async function updateCryptoStatusBox() {
-  const box = document.getElementById('cryptoStatusBox');
-  if (!box) return;
-  const pass = cryptoGetPassword();
-  const persistent = !!(localStorage.getItem(CRYPTO_PASS_KEY));
-  // Узнать зашифрован ли файл (через свежий blob)
-  let isEncrypted = null;
-  try {
-    const { blob } = await ghLoadBlob();
-    isEncrypted = !!(blob && blob.encrypted);
-  } catch(e) { /* network error — оставим null */ }
-
-  let html = '';
-  if (isEncrypted === null) html += '<div><strong>Шифрование файла:</strong> <span style="color:var(--text3);">не удалось проверить (нет сети?)</span></div>';
-  else if (isEncrypted) html += '<div><strong>Шифрование файла:</strong> <span style="color:var(--green);">✓ включено (AES-256)</span></div>';
-  else html += '<div><strong>Шифрование файла:</strong> <span style="color:var(--amber);">не включено</span></div>';
-
-  if (pass) {
-    html += '<div><strong>Пароль:</strong> <span style="color:var(--green);">введён</span>' + (persistent ? ' (запомнен в браузере)' : ' (только в этой сессии)') + '</div>';
-  } else {
-    html += '<div><strong>Пароль:</strong> <span style="color:var(--text3);">не введён</span></div>';
-  }
-  box.innerHTML = html;
-
-  // Кнопки
-  const setupBtn = document.getElementById('cryptoSetupBtn');
-  const changeBtn = document.getElementById('cryptoChangeBtn');
-  const forgetBtn = document.getElementById('cryptoForgetBtn');
-  setupBtn.style.display = (isEncrypted === false) ? '' : 'none';
-  changeBtn.style.display = (isEncrypted === true && pass) ? '' : 'none';
-  forgetBtn.style.display = pass ? '' : 'none';
 }
 
 // События модалки
@@ -3695,20 +3391,6 @@ document.addEventListener('click', (e) => {
       document.getElementById('ghTokenInput').value = '';
       renderSyncIndicator();
       updateModalStatus();
-    }
-  } else if (e.target && e.target.id === 'cryptoSetupBtn') {
-    closeSyncModal();
-    showPasswordModal({ mode: 'setup' });
-  } else if (e.target && e.target.id === 'cryptoChangeBtn') {
-    closeSyncModal();
-    showPasswordModal({ mode: 'change' });
-  } else if (e.target && e.target.id === 'cryptoForgetBtn') {
-    if (confirm('Забыть пароль на этом устройстве? Журнал заблокируется до повторного ввода. Данные в облаке не пострадают.')) {
-      cryptoClearPassword();
-      setGhStatus('locked');
-      updateModalStatus();
-      renderSyncIndicator();
-      updateJournalLockUI();
     }
   } else if (e.target && e.target.id === 'ghSyncModal') {
     if (e.target === document.getElementById('ghSyncModal')) closeSyncModal();
