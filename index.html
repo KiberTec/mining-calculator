@@ -579,6 +579,123 @@
     animation: pulse 2s infinite;
   }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ===== GitHub Sync indicator + modal ===== */
+  #ghSyncBtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500;
+    background: var(--bg3);
+    color: var(--text2);
+    border: 0.5px solid var(--border2);
+    border-radius: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  #ghSyncBtn:hover { background: var(--bg4); color: var(--text); }
+  #ghSyncBtn .gh-dot { font-size: 10px; line-height: 1; }
+  #ghSyncBtn .gh-dot.gh-syncing { animation: pulse 1.2s infinite; }
+  #ghSyncBtn .gh-dot.gh-ok { filter: drop-shadow(0 0 3px rgba(29,185,122,0.5)); }
+  #ghSyncBtn .gh-dot.gh-err { filter: drop-shadow(0 0 3px rgba(226,84,75,0.5)); }
+
+  .gh-modal {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 1000;
+    align-items: flex-start; justify-content: center;
+    padding: 60px 16px 16px;
+    overflow-y: auto;
+  }
+  .gh-modal.open { display: flex; }
+  .gh-modal-inner {
+    background: var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-lg);
+    width: 100%; max-width: 560px;
+    padding: 22px 26px 24px;
+    color: var(--text);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .gh-modal-header {
+    display: flex; align-items: center;
+    margin-bottom: 14px;
+  }
+  .gh-modal-header h3 {
+    font-size: 15px; font-weight: 600; flex: 1;
+    letter-spacing: -0.2px;
+  }
+  .gh-modal-close {
+    background: transparent; border: none; color: var(--text2);
+    font-size: 18px; cursor: pointer; padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .gh-modal-close:hover { background: var(--bg3); color: var(--text); }
+  .gh-section { margin-bottom: 18px; }
+  .gh-section-title {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+  .gh-status-box {
+    background: var(--bg3);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text2);
+  }
+  .gh-status-box code {
+    background: var(--bg4);
+    color: var(--text);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .gh-status-box strong { color: var(--text); font-weight: 600; }
+  .gh-token-row {
+    display: flex; gap: 8px;
+  }
+  .gh-token-row input {
+    flex: 1;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .gh-token-row input:focus { border-color: var(--accent); }
+  .gh-help {
+    font-size: 11.5px; color: var(--text3);
+    margin-top: 6px;
+    line-height: 1.55;
+  }
+  .gh-help a { color: var(--blue); text-decoration: none; }
+  .gh-help a:hover { text-decoration: underline; }
+  .gh-help ol { margin: 4px 0 4px 16px; }
+  .gh-help li { margin-bottom: 2px; }
+  .gh-modal-actions {
+    display: flex; gap: 10px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 0.5px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .gh-toggle-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg3);
+    border-radius: var(--radius);
+    font-size: 13px; color: var(--text2);
+  }
+  .gh-toggle-row input { accent-color: var(--accent); cursor: pointer; }
 </style>
 </head>
 <body>
@@ -772,6 +889,7 @@
       <button class="btn" id="exportJsonBtn" title="Полный бэкап обоих журналов в JSON">📦 Бэкап JSON</button>
       <button class="btn" id="importJsonBtn" title="Загрузить бэкап от партнёра">📥 Восстановить</button>
       <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none;">
+      <button id="ghSyncBtn" title="Синхронизация с GitHub"><span class="gh-dot">⚫</span> Sync</button>
       <div class="spacer"></div>
       <button class="btn danger" id="clearAllBtn">Очистить всё</button>
     </div>
@@ -913,6 +1031,54 @@
 
   </div><!-- /tab-journal -->
 
+</div>
+
+<!-- ===== GitHub Sync modal ===== -->
+<div class="gh-modal" id="ghSyncModal">
+  <div class="gh-modal-inner">
+    <div class="gh-modal-header">
+      <h3>☁️ GitHub Sync</h3>
+      <button class="gh-modal-close" id="ghSyncModalClose">✕</button>
+    </div>
+
+    <div class="gh-section">
+      <div class="gh-section-title">Состояние</div>
+      <div class="gh-status-box" id="ghSyncModalStatus">—</div>
+    </div>
+
+    <div class="gh-section">
+      <div class="gh-section-title">Personal Access Token (PAT)</div>
+      <div class="gh-token-row">
+        <input type="password" id="ghTokenInput" placeholder="github_pat_... или ghp_...">
+        <button class="btn small" id="ghClearToken">Удалить</button>
+      </div>
+      <div class="gh-help">
+        Без PAT работает <strong style="color:var(--text);">только чтение</strong> (увидишь данные партнёра, но не сможешь сохранить свои).<br>
+        Чтобы получить токен для записи:
+        <ol>
+          <li>Открой <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens (Fine-grained)</a></li>
+          <li>«Generate new token» → имя любое, expiration хоть No expiration</li>
+          <li>Repository access → <strong>Only select repositories</strong> → <code>KiberTec/mining-calculator</code></li>
+          <li>Permissions → Repository permissions → <strong>Contents: Read and write</strong></li>
+          <li>«Generate» → скопируй токен (<code>github_pat_...</code>) → вставь сюда</li>
+        </ol>
+        Токен хранится только в твоём браузере (<code>localStorage</code>), на сервер не уходит.
+      </div>
+    </div>
+
+    <div class="gh-section">
+      <div class="gh-toggle-row">
+        <input type="checkbox" id="ghSyncDisableToggle">
+        <label for="ghSyncDisableToggle">Отключить sync на этом устройстве (работать только локально)</label>
+      </div>
+    </div>
+
+    <div class="gh-modal-actions">
+      <button class="btn primary" id="ghSyncSave">Сохранить</button>
+      <button class="btn" id="ghSyncForce">Синхронизировать сейчас</button>
+      <button class="btn ghost" id="ghSyncModalClose">Закрыть</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1098,7 +1264,10 @@ function loadDiffCache() {
   try { return JSON.parse(localStorage.getItem(DIFF_CACHE_KEY) || '{}'); }
   catch(e) { return {}; }
 }
-function saveDiffCache(c) { localStorage.setItem(DIFF_CACHE_KEY, JSON.stringify(c)); }
+function saveDiffCache(c) {
+  localStorage.setItem(DIFF_CACHE_KEY, JSON.stringify(c));
+  if (typeof scheduleGhSync === 'function') scheduleGhSync();
+}
 
 async function fetchHistoricalDifficulty(monthStr) {
   const cache = loadDiffCache();
@@ -1375,6 +1544,8 @@ function loadEntries(user) {
 function saveEntries(entries, user) {
   const u = user || (currentUser === 'DG' ? 'G' : currentUser);
   localStorage.setItem(storageKeyFor(u), JSON.stringify(entries));
+  // Триггер фоновой синхронизации с GitHub (если настроена)
+  if (typeof scheduleGhSync === 'function') scheduleGhSync();
 }
 function countEntries(user) {
   try {
@@ -2780,6 +2951,357 @@ document.querySelectorAll('.user-seg').forEach(b => {
 });
 renderJournal();
 refreshAllLiveData();
+
+// ============================================
+// GITHUB SYNC MODULE
+// ============================================
+// Хранит снимок всех журналов (D + G + кеш сложности) в файле data/journal.json
+// в репозитории KiberTec/mining-calculator через GitHub Contents API.
+// Чтение работает без токена (репо публичный). Запись требует PAT.
+// При конфликте (кто-то записал параллельно) делаем merge: для каждого месяца
+// у каждого пользователя оставляется более новая запись (по id-timestamp создания).
+
+const GH_CONFIG = {
+  owner:  'KiberTec',
+  repo:   'mining-calculator',
+  branch: 'main',
+  file:   'data/journal.json',
+};
+const GH_TOKEN_KEY    = 'mining_gh_token_v1';
+const GH_SHA_KEY      = 'mining_gh_sha_v1';
+const GH_LASTSYNC_KEY = 'mining_gh_last_sync_v1';
+const GH_DISABLED_KEY = 'mining_gh_disabled_v1'; // если юзер явно отключил sync
+
+const GH_API = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
+
+let _ghSyncState = { status: 'idle', error: null, inFlight: false, retryAt: 0 };
+let _ghSyncTimer = null;
+
+// ---- utils ----
+function ghGetToken() {
+  try { return localStorage.getItem(GH_TOKEN_KEY) || ''; } catch(e) { return ''; }
+}
+function ghSetToken(t) {
+  try {
+    if (t && t.trim()) localStorage.setItem(GH_TOKEN_KEY, t.trim());
+    else localStorage.removeItem(GH_TOKEN_KEY);
+  } catch(e) {}
+}
+function ghIsDisabled() {
+  try { return localStorage.getItem(GH_DISABLED_KEY) === '1'; } catch(e) { return false; }
+}
+function ghSetDisabled(v) {
+  try { localStorage.setItem(GH_DISABLED_KEY, v ? '1' : '0'); } catch(e) {}
+}
+function utf8ToB64(s) { return btoa(unescape(encodeURIComponent(s))); }
+function b64ToUtf8(s) { return decodeURIComponent(escape(atob(String(s || '').replace(/\s/g, '')))); }
+
+function setGhStatus(status, error = null) {
+  _ghSyncState.status = status;
+  _ghSyncState.error = error;
+  if (status === 'ok') {
+    try { localStorage.setItem(GH_LASTSYNC_KEY, String(Date.now())); } catch(e) {}
+  }
+  renderSyncIndicator();
+}
+
+// ---- API ----
+async function ghLoadData() {
+  const headers = { 'Accept': 'application/vnd.github+json' };
+  const token = ghGetToken();
+  if (token) headers['Authorization'] = 'token ' + token;
+  // ref=branch чтобы не словить кеш
+  const r = await fetch(`${GH_API}?ref=${GH_CONFIG.branch}&t=${Date.now()}`, {
+    headers, cache: 'no-store'
+  });
+  if (r.status === 404) return { payload: null, sha: null };
+  if (!r.ok) throw new Error('Load HTTP ' + r.status);
+  const data = await r.json();
+  try { localStorage.setItem(GH_SHA_KEY, data.sha); } catch(e) {}
+  let payload = null;
+  try { payload = JSON.parse(b64ToUtf8(data.content)); } catch(e) {
+    throw new Error('Не удалось распарсить journal.json: ' + e.message);
+  }
+  return { payload, sha: data.sha };
+}
+
+async function ghSaveData(payload, sha) {
+  const token = ghGetToken();
+  if (!token) throw new Error('PAT не настроен');
+  const body = {
+    message: 'Update journal (' + new Date().toISOString() + ')',
+    content: utf8ToB64(JSON.stringify(payload, null, 2) + '\n'),
+    branch:  GH_CONFIG.branch,
+  };
+  if (sha) body.sha = sha;
+  const r = await fetch(GH_API, {
+    method: 'PUT',
+    headers: {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': 'token ' + token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (r.status === 409 || r.status === 422) {
+    const err = await r.json().catch(() => ({}));
+    const e = new Error('CONFLICT: ' + (err.message || 'sha mismatch'));
+    e.conflict = true;
+    throw e;
+  }
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error('Save HTTP ' + r.status + ' — ' + (err.message || ''));
+  }
+  const result = await r.json();
+  try { localStorage.setItem(GH_SHA_KEY, result.content.sha); } catch(e) {}
+  return result;
+}
+
+// ---- merge ----
+function ghBuildPayload() {
+  return {
+    schemaVersion: 1,
+    updatedAt: new Date().toISOString(),
+    journals: {
+      D: loadEntries('D'),
+      G: loadEntries('G'),
+    },
+    diffCache: loadDiffCache(),
+  };
+}
+
+function ghMergePayload(local, remote) {
+  if (!remote) return local;
+  const mergeArr = (l, r) => {
+    const map = new Map();
+    for (const e of (r || [])) if (e && e.month) map.set(e.month, e);
+    for (const e of (l || [])) {
+      if (!e || !e.month) continue;
+      const ex = map.get(e.month);
+      if (!ex || (e.id || 0) >= (ex.id || 0)) map.set(e.month, e);
+    }
+    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+  };
+  return {
+    schemaVersion: 1,
+    updatedAt: new Date().toISOString(),
+    journals: {
+      D: mergeArr(local.journals && local.journals.D, remote.journals && remote.journals.D),
+      G: mergeArr(local.journals && local.journals.G, remote.journals && remote.journals.G),
+    },
+    diffCache: Object.assign({}, remote.diffCache || {}, local.diffCache || {}),
+  };
+}
+
+function ghApplyPayload(p) {
+  if (!p || !p.journals) return false;
+  // Применяем напрямую в localStorage, без триггера scheduleGhSync
+  try {
+    localStorage.setItem(storageKeyFor('D'), JSON.stringify(p.journals.D || []));
+    localStorage.setItem(storageKeyFor('G'), JSON.stringify(p.journals.G || []));
+    if (p.diffCache && typeof p.diffCache === 'object') {
+      localStorage.setItem(DIFF_CACHE_KEY, JSON.stringify(p.diffCache));
+    }
+  } catch(e) { return false; }
+  return true;
+}
+
+function payloadEqual(a, b) {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  // Сравниваем только данные, без updatedAt
+  const norm = (p) => JSON.stringify({
+    D: p.journals && p.journals.D || [],
+    G: p.journals && p.journals.G || [],
+    diff: p.diffCache || {},
+  });
+  return norm(a) === norm(b);
+}
+
+// ---- orchestrator ----
+async function ghSyncNow(opts = {}) {
+  if (ghIsDisabled()) return;
+  if (_ghSyncState.inFlight) return;
+  if (!opts.force && Date.now() < _ghSyncState.retryAt) return;
+  _ghSyncState.inFlight = true;
+  setGhStatus('syncing');
+
+  try {
+    // 1) Тянем удалённое
+    const { payload: remote } = await ghLoadData();
+    const local = ghBuildPayload();
+
+    // 2) Мерджим
+    const merged = ghMergePayload(local, remote);
+
+    // 3) Если merged отличается от того, что лежит локально — применяем (синхронизируем UI с merged)
+    const beforeApply = ghBuildPayload();
+    if (!payloadEqual(merged, beforeApply)) {
+      ghApplyPayload(merged);
+      // Если открыт журнал — перерисуем UI
+      if (document.getElementById('tab-journal') && document.getElementById('tab-journal').classList.contains('active')) {
+        renderJournal();
+      } else {
+        updateUserBadges();
+      }
+    }
+
+    // 4) Если merged отличается от remote — пушим (только если есть токен)
+    if (!payloadEqual(merged, remote)) {
+      if (!ghGetToken()) {
+        // Партнёр без токена — только чтение. Покажем "synced (read-only)"
+        setGhStatus('readonly');
+        _ghSyncState.inFlight = false;
+        return;
+      }
+      try {
+        await ghSaveData(merged, localStorage.getItem(GH_SHA_KEY));
+      } catch(e) {
+        if (e.conflict) {
+          // Кто-то записал между нашим load и save. Ретраим один раз
+          const fresh = await ghLoadData();
+          const remerged = ghMergePayload(merged, fresh.payload);
+          ghApplyPayload(remerged);
+          await ghSaveData(remerged, fresh.sha);
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    setGhStatus(ghGetToken() ? 'ok' : 'readonly');
+  } catch(e) {
+    console.warn('[gh-sync]', e);
+    setGhStatus('error', e.message);
+    // Бэкофф: 30 секунд при ошибке
+    _ghSyncState.retryAt = Date.now() + 30000;
+  } finally {
+    _ghSyncState.inFlight = false;
+  }
+}
+
+function scheduleGhSync() {
+  if (ghIsDisabled()) return;
+  clearTimeout(_ghSyncTimer);
+  _ghSyncTimer = setTimeout(() => ghSyncNow({ force: true }), 1200);
+}
+
+// ---- UI: индикатор + модалка ----
+function fmtTimeAgo(ts) {
+  if (!ts) return 'никогда';
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 5) return 'только что';
+  if (sec < 60) return sec + ' сек назад';
+  if (sec < 3600) return Math.floor(sec/60) + ' мин назад';
+  if (sec < 86400) return Math.floor(sec/3600) + ' ч назад';
+  return Math.floor(sec/86400) + ' дн назад';
+}
+
+function renderSyncIndicator() {
+  const btn = document.getElementById('ghSyncBtn');
+  if (!btn) return;
+  const hasToken = !!ghGetToken();
+  const disabled = ghIsDisabled();
+  let dot = '⚫', text = '', cls = '';
+  if (disabled) { dot = '⚫'; text = 'Sync выкл.'; cls = 'gh-off'; }
+  else if (_ghSyncState.status === 'syncing') { dot = '🟡'; text = 'Синхронизация…'; cls = 'gh-syncing'; }
+  else if (_ghSyncState.status === 'ok')      { dot = '🟢'; text = 'Синхронизировано'; cls = 'gh-ok'; }
+  else if (_ghSyncState.status === 'readonly'){ dot = '🔵'; text = 'Только чтение'; cls = 'gh-ro'; }
+  else if (_ghSyncState.status === 'error')   { dot = '🔴'; text = 'Ошибка sync'; cls = 'gh-err'; }
+  else if (!hasToken) { dot = '⚫'; text = 'Sync не настроен'; cls = 'gh-off'; }
+  btn.innerHTML = '<span class="gh-dot ' + cls + '">' + dot + '</span> ' + text;
+  btn.title = _ghSyncState.error ? ('Ошибка: ' + _ghSyncState.error) : text;
+}
+
+function openSyncModal() {
+  const modal = document.getElementById('ghSyncModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  const tokenInput = document.getElementById('ghTokenInput');
+  const hasToken = !!ghGetToken();
+  tokenInput.value = hasToken ? '••••••••••••••••' : '';
+  tokenInput.dataset.dirty = '';
+  document.getElementById('ghSyncDisableToggle').checked = ghIsDisabled();
+  updateModalStatus();
+}
+function closeSyncModal() {
+  const modal = document.getElementById('ghSyncModal');
+  if (modal) modal.classList.remove('open');
+}
+function updateModalStatus() {
+  const lastSync = +(localStorage.getItem(GH_LASTSYNC_KEY) || 0);
+  const stat = document.getElementById('ghSyncModalStatus');
+  if (!stat) return;
+  let html = '<div><strong>Репозиторий:</strong> <code>' + GH_CONFIG.owner + '/' + GH_CONFIG.repo + '</code></div>';
+  html += '<div><strong>Файл:</strong> <code>' + GH_CONFIG.file + '</code></div>';
+  html += '<div><strong>Состояние:</strong> ';
+  if (ghIsDisabled()) html += '<span style="color:var(--text2);">отключено</span>';
+  else if (_ghSyncState.status === 'ok') html += '<span style="color:var(--green);">синхронизировано (запись доступна)</span>';
+  else if (_ghSyncState.status === 'readonly') html += '<span style="color:var(--blue);">только чтение (PAT не настроен)</span>';
+  else if (_ghSyncState.status === 'syncing') html += '<span style="color:var(--amber);">синхронизация…</span>';
+  else if (_ghSyncState.status === 'error') html += '<span style="color:var(--red);">ошибка: ' + (_ghSyncState.error || '') + '</span>';
+  else html += '<span style="color:var(--text2);">ожидание</span>';
+  html += '</div>';
+  html += '<div><strong>Последняя синхронизация:</strong> ' + fmtTimeAgo(lastSync) + '</div>';
+  stat.innerHTML = html;
+}
+
+// События модалки
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'ghSyncBtn') {
+    openSyncModal();
+  } else if (e.target && e.target.id === 'ghSyncModalClose') {
+    closeSyncModal();
+  } else if (e.target && e.target.id === 'ghSyncSave') {
+    const tokenInput = document.getElementById('ghTokenInput');
+    if (tokenInput.dataset.dirty === '1') {
+      const v = tokenInput.value.trim();
+      if (v && v !== '••••••••••••••••') ghSetToken(v);
+      else if (!v) ghSetToken('');
+    }
+    ghSetDisabled(document.getElementById('ghSyncDisableToggle').checked);
+    updateModalStatus();
+    renderSyncIndicator();
+    ghSyncNow({ force: true });
+  } else if (e.target && e.target.id === 'ghSyncForce') {
+    ghSyncNow({ force: true }).then(updateModalStatus);
+  } else if (e.target && e.target.id === 'ghClearToken') {
+    if (confirm('Удалить PAT из этого браузера? Запись в GitHub станет недоступна (чтение продолжит работать).')) {
+      ghSetToken('');
+      document.getElementById('ghTokenInput').value = '';
+      renderSyncIndicator();
+      updateModalStatus();
+    }
+  } else if (e.target && e.target.id === 'ghSyncModal') {
+    // клик по фону — закрыть
+    if (e.target === document.getElementById('ghSyncModal')) closeSyncModal();
+  }
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'ghTokenInput') {
+    e.target.dataset.dirty = '1';
+  }
+});
+
+// При старте: первая загрузка из GitHub (даже без PAT)
+(async function ghInit() {
+  if (ghIsDisabled()) {
+    renderSyncIndicator();
+    return;
+  }
+  // небольшой delay чтобы UI успел отрендериться
+  setTimeout(() => ghSyncNow({ force: true }), 500);
+  // Периодически обновляем индикатор (для fmtTimeAgo)
+  setInterval(() => {
+    renderSyncIndicator();
+    if (document.getElementById('ghSyncModal') && document.getElementById('ghSyncModal').classList.contains('open')) {
+      updateModalStatus();
+    }
+  }, 30000);
+})();
+
 </script>
 </body>
 </html>
