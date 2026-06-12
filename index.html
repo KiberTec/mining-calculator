@@ -1064,14 +1064,14 @@
           <input type="number" id="f_difficulty" placeholder="авто-загрузка..." min="0" step="0.1">
           <span class="hint" id="f_difficulty_hint">используется для расчёта операционной эффективности</span>
         </div>
-        <div class="field" id="f_demaFeeField" style="display:none;">
-          <label>% от добычи отдано <span class="field-optional">опц.</span></label>
-          <input type="number" id="f_demaFeePercent" placeholder="0" min="0" max="100" step="0.1" value="0">
-          <span class="hint">часть BTC уходит партнёру/хостингу</span>
-        </div>
         <div class="field">
-          <label>Намайнено, BTC <span class="field-optional" id="f_btcMined_hint" style="display:none;">общая (gross)</span></label>
+          <label>Намайнено, BTC</label>
           <input type="number" id="f_btcMined" placeholder="0.0796" min="0" step="0.00001">
+        </div>
+        <div class="field" id="f_btcGivenField" style="display:none;">
+          <label>Отдано партнёру, BTC</label>
+          <input type="number" id="f_btcGiven" placeholder="0.02" min="0" step="0.00001" value="0">
+          <span class="hint" id="f_btcGiven_hint">сколько BTC ушло хостингу/партнёру</span>
         </div>
         <div class="field">
           <label>Продано, BTC</label>
@@ -1670,11 +1670,13 @@ function loadEntries(user) {
   const u = user || (currentUser === 'DG' ? 'G' : currentUser);
   try {
     const raw = JSON.parse(localStorage.getItem(storageKeyFor(u)) || '[]');
-    return raw.map(e => ({
-      ...e,
-      location: e.location || 'birsk',
-      demaFeePercent: typeof e.demaFeePercent === 'number' ? e.demaFeePercent : 0,
-    }));
+    return raw.map(e => {
+      let btcGiven = typeof e.btcGiven === 'number' ? e.btcGiven : 0;
+      if (!btcGiven && e.demaFeePercent > 0 && e.btcMined > 0) {
+        btcGiven = e.btcMined * (e.demaFeePercent / 100);
+      }
+      return { ...e, location: e.location || 'birsk', btcGiven };
+    });
   } catch(e) { return []; }
 }
 
@@ -1704,9 +1706,7 @@ function filterByLocation(entries) {
 
 // ---- Per-entry derived numbers (with Дема commission) ----
 function entryComissionBtc(e) {
-  const loc = e.location || 'birsk';
-  if (loc !== 'dema' || !e.demaFeePercent) return 0;
-  return e.btcMined * (e.demaFeePercent / 100);
+  return e.btcGiven || 0;
 }
 function entryComissionUsd(e) {
   const btc = entryComissionBtc(e);
@@ -1755,7 +1755,7 @@ function openForm(entry = null) {
     const loc = entry.location || 'birsk';
     const radio = document.querySelector(`input[name="f_location"][value="${loc}"]`);
     if (radio) radio.checked = true;
-    document.getElementById('f_demaFeePercent').value = entry.demaFeePercent || 0;
+    document.getElementById('f_btcGiven').value = entry.btcGiven || 0;
 
     document.getElementById('f_kwh').value        = entry.kwh ?? '';
     document.getElementById('f_rubElec').value    = entry.rubElec ?? '';
@@ -1774,7 +1774,7 @@ function openForm(entry = null) {
       ? currentLocationFilter : 'birsk';
     const radio = document.querySelector(`input[name="f_location"][value="${defaultLoc}"]`);
     if (radio) radio.checked = true;
-    document.getElementById('f_demaFeePercent').value = 0;
+    document.getElementById('f_btcGiven').value = 0;
 
     const now = new Date();
     const yyyymm = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
@@ -1821,10 +1821,7 @@ function updateLocationFormUI() {
   document.querySelectorAll('.loc-card').forEach(c => {
     c.classList.toggle('selected', c.dataset.loc === loc);
   });
-  const isDema = loc === 'dema';
-  document.getElementById('f_demaFeeField').style.display = isDema ? '' : 'none';
-  const minedHint = document.getElementById('f_btcMined_hint');
-  if (minedHint) minedHint.style.display = isDema ? '' : 'none';
+  document.getElementById('f_btcGivenField').style.display = loc === 'dema' ? '' : 'none';
 }
 document.querySelectorAll('input[name="f_location"]').forEach(r => {
   r.addEventListener('change', updateLocationFormUI);
@@ -1861,7 +1858,7 @@ document.getElementById('saveEntryBtn').addEventListener('click', () => {
     id: editingId ?? Date.now(),
     month,
     location,
-    demaFeePercent: location === 'dema' ? (+document.getElementById('f_demaFeePercent').value || 0) : 0,
+    btcGiven: location === 'dema' ? (+document.getElementById('f_btcGiven').value || 0) : 0,
     kwh:        +document.getElementById('f_kwh').value || 0,
     rubElec:    +document.getElementById('f_rubElec').value || 0,
     hashrate:   +document.getElementById('f_hashrate').value || 0,
@@ -1916,7 +1913,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
       const m = computeEntryMetrics(e);
       const revenueRub = e.btcSold * e.salePrice * e.usdRub;
       return [
-        user, LOC_META[loc].label, e.month, e.kwh, e.rubElec, e.demaFeePercent || 0,
+        user, LOC_META[loc].label, e.month, e.kwh, e.rubElec, e.btcGiven || 0,
         e.hashrate, e.difficulty, e.btcMined, e.btcSold, e.salePrice, e.usdRub,
         Math.round(revenueRub), Math.round(m.profRub), Math.round(m.costPerBtc)
       ];
@@ -1931,7 +1928,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
     rows = buildRows(currentUser);
   }
   if (rows.length === 0) { alert('Журнал пуст'); return; }
-  const headers = ['Пользователь','Локация','Месяц','кВтч','Заплачено ₽','% комиссия','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Прибыль ₽','Себестоимость 1 BTC $'];
+  const headers = ['Пользователь','Локация','Месяц','кВтч','Заплачено ₽','Отдано BTC','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Прибыль ₽','Себестоимость 1 BTC $'];
   const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
