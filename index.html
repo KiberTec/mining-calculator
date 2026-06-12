@@ -42,6 +42,11 @@
     line-height: 1.6;
     min-height: 100vh;
     padding: 32px 20px 60px;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (max-width: 640px) {
+    body { padding: 14px 12px 40px; font-size: 14px; }
   }
 
   .container { max-width: 980px; margin: 0 auto; }
@@ -170,6 +175,12 @@
   }
   .tab-btn.active .tab-tag { color: var(--text2); }
 
+  @media (max-width: 640px) {
+    .tabs { gap: 3px; padding: 4px; margin-bottom: 16px; }
+    .tab-btn { padding: 9px 6px; font-size: 12px; }
+    .tab-btn .tab-tag { display: none; }
+  }
+
   .tab-section { display: none; }
   .tab-section.active { display: block; }
 
@@ -180,6 +191,11 @@
   /* Panels */
   .panel { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; }
   .full-panel { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; margin-bottom: 16px; }
+  @media (max-width: 640px) {
+    .panel { padding: 14px 14px; }
+    .full-panel { padding: 14px 14px; }
+    .live-banner { padding: 12px 14px; }
+  }
   .panel-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 18px; }
   .panel-title.with-actions { display: flex; align-items: center; gap: 12px; }
   .panel-title.with-actions .actions { margin-left: auto; display: flex; gap: 8px; }
@@ -231,9 +247,32 @@
   .slider-val-unit { font-size: 13px; color: var(--text2); font-weight: 500; min-width: 22px; }
   .slider-val-extra { font-size: 11px; color: var(--text3); margin-left: 6px; }
 
+  @media (max-width: 640px) {
+    .slider-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas: "label value" "range range";
+      column-gap: 10px;
+      row-gap: 6px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .slider-label { grid-area: label; min-width: 0; font-size: 12px; }
+    .slider-row input[type=range] { grid-area: range; width: 100%; }
+    .slider-val, .slider-val-wrap { grid-area: value; min-width: 0; }
+    .slider-val-wrap { gap: 2px; }
+    .slider-val-input { width: 76px; }
+  }
+
   /* Cards */
   .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-  @media (max-width: 640px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) {
+    .cards-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric-card { padding: 10px 11px; }
+  }
+  @media (max-width: 380px) {
+    .cards-grid { grid-template-columns: 1fr; }
+  }
   .metric-card { background: var(--bg3); border-radius: var(--radius); padding: 12px 14px; }
   .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
   .metric-value { font-size: 19px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
@@ -303,6 +342,11 @@
     width: 100%;
   }
   .field input:focus, .field select:focus { border-color: var(--accent); }
+  @media (max-width: 640px) {
+    .field input, .field select { font-size: 16px; padding: 10px 12px; }
+    .gh-password-input { font-size: 16px; }
+    .slider-val-input { font-size: 14px; }
+  }
   /* ===== Month picker ===== */
   .month-picker { position: relative; width: 100%; }
   .month-picker-display {
@@ -501,8 +545,28 @@
     gap: 10px;
     margin-bottom: 16px;
     flex-wrap: wrap;
+    align-items: center;
   }
-  .actions-bar .spacer { flex: 1; }
+  .actions-bar .spacer { flex: 1; min-width: 0; }
+  .actions-bar > button,
+  .actions-bar > #ghSyncBtn {
+    flex: 0 0 auto;
+  }
+  @media (max-width: 640px) {
+    .actions-bar { gap: 6px; }
+    .actions-bar .spacer { display: none; }
+    .actions-bar > button,
+    .actions-bar > #ghSyncBtn {
+      padding: 8px 11px;
+      font-size: 12px;
+      flex: 1 1 calc(50% - 6px);
+      min-width: 0;
+      justify-content: center;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .actions-bar > .btn.primary { flex-basis: 100%; }
+  }
 
   /* User segmented switcher */
   .user-switcher {
@@ -548,6 +612,10 @@
     font-weight: 600;
   }
   .user-seg.active .seg-badge { background: rgba(255,255,255,0.1); color: var(--text2); }
+  @media (max-width: 640px) {
+    .user-switcher { width: 100%; }
+    .user-seg { flex: 1; padding: 8px 10px; font-size: 12px; justify-content: center; }
+  }
 
   /* Location filter switcher (Все / Бирск / Дема) */
   .location-switcher {
@@ -575,6 +643,10 @@
     background: rgba(255,255,255,0.06); color: var(--text3); font-weight: 600;
   }
   .loc-seg.active .seg-badge { background: rgba(255,255,255,0.1); color: var(--text2); }
+  @media (max-width: 640px) {
+    .location-switcher { width: 100%; }
+    .loc-seg { flex: 1; padding: 8px 8px; font-size: 11px; justify-content: center; }
+  }
 
   /* Location picker in entry form (2 cards) */
   .location-picker { margin-bottom: 18px; }
@@ -988,7 +1060,7 @@
       <button class="btn" id="exportJsonBtn" title="Полный бэкап обоих журналов в JSON">📦 Бэкап JSON</button>
       <button class="btn" id="importJsonBtn" title="Загрузить бэкап от партнёра">📥 Восстановить</button>
       <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none;">
-      <button id="ghSyncBtn" title="Синхронизация с GitHub"><span class="gh-dot">⚫</span> Sync</button>
+      <button class="btn" id="ghSyncBtn" title="Синхронизация с GitHub"><span class="gh-dot">⚫</span> Sync</button>
       <div class="spacer"></div>
       <button class="btn" id="journalLockBtn" title="Заблокировать журнал на этом устройстве">🔒 Закрыть</button>
       <button class="btn danger" id="clearAllBtn">Очистить всё</button>
@@ -3586,16 +3658,20 @@ function renderSyncIndicator() {
   if (!btn) return;
   const hasToken = !!ghGetToken();
   const disabled = ghIsDisabled();
-  let dot = '⚫', text = '', cls = '';
-  if (disabled) { dot = '⚫'; text = 'Sync выкл.'; cls = 'gh-off'; }
-  else if (_ghSyncState.status === 'syncing') { dot = '🟡'; text = 'Синхронизация…'; cls = 'gh-syncing'; }
-  else if (_ghSyncState.status === 'ok')      { dot = '🟢'; text = 'Синхронизировано'; cls = 'gh-ok'; }
-  else if (_ghSyncState.status === 'readonly'){ dot = '🔵'; text = 'Только чтение'; cls = 'gh-ro'; }
-  else if (_ghSyncState.status === 'error')   { dot = '🔴'; text = 'Ошибка sync'; cls = 'gh-err'; }
-  else if (!hasToken) { dot = '⚫'; text = 'Sync не настроен'; cls = 'gh-off'; }
-  btn.innerHTML = '<span class="gh-dot ' + cls + '">' + dot + '</span> ' + text;
+  const isNarrow = window.innerWidth <= 640;
+  let dot = '⚫', text = '', textShort = '', cls = '';
+  if (disabled)                                   { dot = '⚫'; text = 'Sync выкл.';       textShort = 'Sync'; cls = 'gh-off'; }
+  else if (_ghSyncState.status === 'syncing')     { dot = '🟡'; text = 'Синхронизация…';  textShort = 'Sync…'; cls = 'gh-syncing'; }
+  else if (_ghSyncState.status === 'ok')          { dot = '🟢'; text = 'Синхронизировано'; textShort = 'Sync'; cls = 'gh-ok'; }
+  else if (_ghSyncState.status === 'readonly')    { dot = '🔵'; text = 'Только чтение';    textShort = 'Read'; cls = 'gh-ro'; }
+  else if (_ghSyncState.status === 'error')       { dot = '🔴'; text = 'Ошибка sync';      textShort = 'Err';  cls = 'gh-err'; }
+  else if (!hasToken)                             { dot = '⚫'; text = 'Sync не настроен'; textShort = 'Sync'; cls = 'gh-off'; }
+  btn.innerHTML = '<span class="gh-dot ' + cls + '">' + dot + '</span> ' + (isNarrow ? textShort : text);
   btn.title = _ghSyncState.error ? ('Ошибка: ' + _ghSyncState.error) : text;
 }
+window.addEventListener('resize', () => {
+  if (typeof renderSyncIndicator === 'function') renderSyncIndicator();
+});
 
 function openSyncModal() {
   const modal = document.getElementById('ghSyncModal');
@@ -3627,6 +3703,18 @@ function updateModalStatus() {
   else html += '<span style="color:var(--text2);">ожидание</span>';
   html += '</div>';
   html += '<div><strong>Последняя синхронизация:</strong> ' + fmtTimeAgo(lastSync) + '</div>';
+
+  // Если PAT не настроен, но локально есть данные — заметная подсказка
+  if (_ghSyncState.status === 'readonly' && !ghGetToken()) {
+    const localCount = (loadEntries('D').length + loadEntries('G').length);
+    if (localCount > 0) {
+      html += `
+        <div style="margin-top:12px;padding:10px 12px;background:rgba(232,168,50,0.08);border:0.5px solid rgba(232,168,50,0.25);border-radius:8px;font-size:12px;color:var(--text);line-height:1.5;">
+          ⚠ <strong>${localCount}</strong> ${localCount === 1 ? 'запись' : 'записей'} лежит только в этом браузере.
+          На GitHub и на других устройствах они не появятся, пока ты не введёшь <strong>PAT</strong> ниже.
+        </div>`;
+    }
+  }
   stat.innerHTML = html;
 }
 
