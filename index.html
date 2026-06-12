@@ -1247,22 +1247,25 @@
     </div>
 
     <div class="gh-section">
-      <div class="gh-section-title">Personal Access Token (PAT)</div>
+      <div class="gh-section-title">Personal Access Token (PAT) — нужен один раз</div>
       <div class="gh-token-row">
         <input type="password" id="ghTokenInput" placeholder="github_pat_... или ghp_...">
         <button class="btn small" id="ghClearToken">Удалить</button>
       </div>
       <div class="gh-help">
-        Без PAT работает <strong style="color:var(--text);">только чтение</strong> (увидишь данные партнёра, но не сможешь сохранить свои).<br>
-        Чтобы получить токен для записи:
+        <div style="padding:10px 12px;background:rgba(29,185,122,0.06);border:0.5px solid rgba(29,185,122,0.2);border-radius:8px;margin-bottom:10px;color:var(--text);font-size:12px;line-height:1.55;">
+          ✨ <strong>Один раз настроил — работает везде.</strong> После того как ты вставишь PAT здесь, он автоматически зашифруется паролем входа и сохранится в репо.
+          На <strong>телефоне</strong> и у <strong>партнёра</strong> ничего настраивать не надо — открыли сайт, ввели пароль → PAT подтянется сам, и можно сразу добавлять записи.
+        </div>
+        Как получить токен:
         <ol>
           <li>Открой <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens (Fine-grained)</a></li>
           <li>«Generate new token» → имя любое, expiration хоть No expiration</li>
           <li>Repository access → <strong>Only select repositories</strong> → <code>KiberTec/mining-calculator</code></li>
           <li>Permissions → Repository permissions → <strong>Contents: Read and write</strong></li>
-          <li>«Generate» → скопируй токен (<code>github_pat_...</code>) → вставь сюда</li>
+          <li>«Generate» → скопируй токен (<code>github_pat_...</code>) → вставь сюда → Сохранить</li>
         </ol>
-        Токен хранится только в твоём браузере (<code>localStorage</code>), на сервер не уходит.
+        Токен живёт в твоём браузере (<code>localStorage</code>) и в зашифрованном виде в репо (<code>data/auth.json</code>). Расшифровать его можно только зная пароль входа.
       </div>
     </div>
 
@@ -3354,6 +3357,17 @@ async function tryUnlockJournal(password) {
   if (h === JOURNAL_PASSWORD_HASH) {
     setJournalUnlocked(true);
     updateJournalLockUI();
+    // Если на этом устройстве нет PAT — пробуем подтянуть shared PAT из репо,
+    // чтобы партнёр/телефон могли писать без отдельной настройки токена.
+    if (typeof fetchSharedPat === 'function' && typeof ghGetToken === 'function' && !ghGetToken()) {
+      fetchSharedPat().then(pat => {
+        if (pat && typeof ghSetToken === 'function') {
+          ghSetToken(pat);
+          if (typeof scheduleGhSync === 'function') scheduleGhSync();
+          if (typeof renderSyncIndicator === 'function') renderSyncIndicator();
+        }
+      });
+    }
     return true;
   }
   return false;
@@ -3450,6 +3464,108 @@ function ghSetDisabled(v) {
 }
 function utf8ToB64(s) { return btoa(unescape(encodeURIComponent(s))); }
 function b64ToUtf8(s) { return decodeURIComponent(escape(atob(String(s || '').replace(/\s/g, '')))); }
+
+// =================================================================
+// SHARED PAT — для записи на GitHub с любого устройства/партнёра.
+// Владелец один раз вводит свой PAT. Он шифруется паролем входа
+// (hellobro1) и кладётся в data/auth.json в репо.
+// Любой кто открывает сайт + вводит пароль → получает этот PAT
+// автоматически и может записывать данные журнала.
+// =================================================================
+const SHARED_PAT_FILE = 'data/auth.json';
+const SHARED_PAT_API  = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${SHARED_PAT_FILE}`;
+// Пароль, которым шифруется PAT. Совпадает с захардкоженным паролем входа.
+// Хэш этого пароля — JOURNAL_PASSWORD_HASH (см. верх скрипта). Мы не можем
+// его восстановить из хэша, поэтому держим plaintext константу здесь.
+const SHARED_PAT_PASSWORD = 'hellobro1';
+
+function _b64enc(bytes) {
+  let s = ''; for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+}
+function _b64dec(s) {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function _sharedPatKey() {
+  const m = await crypto.subtle.importKey('raw',
+    new TextEncoder().encode(SHARED_PAT_PASSWORD), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new TextEncoder().encode('mining-pat-salt-v1'),
+      iterations: 100000, hash: 'SHA-256' },
+    m, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function _sharedPatEncrypt(pat) {
+  const key = await _sharedPatKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(pat));
+  return { v: 1, iv: _b64enc(iv), ct: _b64enc(new Uint8Array(ct)) };
+}
+async function _sharedPatDecrypt(blob) {
+  const key = await _sharedPatKey();
+  const iv = _b64dec(blob.iv);
+  const ct = _b64dec(blob.ct);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(plain);
+}
+
+// Скачивает (и расшифровывает) shared PAT из репо. null если нет файла или ошибка.
+async function fetchSharedPat() {
+  try {
+    const r = await fetch(`${SHARED_PAT_API}?ref=${GH_CONFIG.branch}&t=${Date.now()}`,
+      { headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store' });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const blob = JSON.parse(b64ToUtf8(data.content));
+    return await _sharedPatDecrypt(blob);
+  } catch(e) { console.warn('[shared-pat-fetch]', e); return null; }
+}
+
+// Если у нас есть локальный PAT и в репо его нет (или другой) — пушит в репо.
+async function uploadSharedPatIfNeeded() {
+  const localPat = ghGetToken();
+  if (!localPat) return;
+  try {
+    // Узнаём sha и текущее содержимое
+    let existingSha = null, existingPat = null;
+    try {
+      const r = await fetch(`${SHARED_PAT_API}?ref=${GH_CONFIG.branch}&t=${Date.now()}`,
+        { headers: { 'Accept': 'application/vnd.github+json',
+                     'Authorization': 'token ' + localPat },
+          cache: 'no-store' });
+      if (r.ok) {
+        const data = await r.json();
+        existingSha = data.sha;
+        try {
+          const blob = JSON.parse(b64ToUtf8(data.content));
+          existingPat = await _sharedPatDecrypt(blob);
+        } catch(e) { /* старый или битый формат — перезапишем */ }
+      }
+    } catch(e) { /* 404 — файла ещё нет, окей */ }
+
+    if (existingPat === localPat) return;  // уже актуальный
+
+    const enc = await _sharedPatEncrypt(localPat);
+    const body = {
+      message: 'Update shared auth (' + new Date().toISOString() + ')',
+      content: utf8ToB64(JSON.stringify(enc, null, 2) + '\n'),
+      branch:  GH_CONFIG.branch,
+    };
+    if (existingSha) body.sha = existingSha;
+    const put = await fetch(SHARED_PAT_API, {
+      method: 'PUT',
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': 'token ' + localPat,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!put.ok) console.warn('[shared-pat-upload] HTTP ' + put.status);
+  } catch(e) { console.warn('[shared-pat-upload]', e); }
+}
 
 function setGhStatus(status, error = null) {
   _ghSyncState.status = status;
@@ -3627,6 +3743,11 @@ async function ghSyncNow(opts = {}) {
     }
 
     setGhStatus(ghGetToken() ? 'ok' : 'readonly');
+    // Если у нас есть PAT и sync прошёл успешно — асинхронно убеждаемся
+    // что в репо лежит актуальный shared PAT (чтобы партнёр/телефон могли писать).
+    if (ghGetToken() && typeof uploadSharedPatIfNeeded === 'function') {
+      uploadSharedPatIfNeeded();
+    }
   } catch(e) {
     console.warn('[gh-sync]', e);
     setGhStatus('error', e.message);
@@ -3761,9 +3882,19 @@ document.addEventListener('input', (e) => {
     renderSyncIndicator();
     return;
   }
-  // небольшой delay чтобы UI успел отрендериться
+  // Если журнал уже разлочен (нажали Разблокировать раньше) и PAT нет —
+  // попробуем подтянуть shared PAT из репо. Это даёт мгновенный write-доступ
+  // на этом устройстве (например, после открытия сайта на телефоне).
+  if (isJournalUnlocked() && !ghGetToken()) {
+    fetchSharedPat().then(pat => {
+      if (pat) {
+        ghSetToken(pat);
+        renderSyncIndicator();
+        scheduleGhSync();
+      }
+    });
+  }
   setTimeout(() => ghSyncNow({ force: true }), 500);
-  // Периодически обновляем индикатор (для fmtTimeAgo)
   setInterval(() => {
     renderSyncIndicator();
     if (document.getElementById('ghSyncModal') && document.getElementById('ghSyncModal').classList.contains('open')) {
