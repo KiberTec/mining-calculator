@@ -892,8 +892,8 @@
     <div class="shared-grid">
       <div class="slider-row">
         <span class="slider-label">Цена BTC, $</span>
-        <input type="range" id="btc_price" min="40000" max="200000" step="1000" value="90000">
-        <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="btc_price_input" value="90000" step="any"><span class="slider-val-unit">$</span></span>
+        <input type="range" id="btc_price" min="40000" max="200000" step="1000" value="65000">
+        <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="btc_price_input" value="65000" step="any"><span class="slider-val-unit">$</span></span>
       </div>
       <div class="slider-row">
         <span class="slider-label">Хешрейт, TH/s</span>
@@ -1182,9 +1182,9 @@
         <div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;">Что-если: при какой цене BTC сколько заработаю?</div>
         <div class="slider-row" style="margin-bottom:14px;">
           <span class="slider-label">Цена BTC, $</span>
-          <input type="range" id="whatif_price" min="20000" max="300000" step="500" value="109000">
+          <input type="range" id="whatif_price" min="20000" max="300000" step="500" value="80000">
           <span class="slider-val-wrap">
-            <input type="number" class="slider-val-input" id="whatif_price_input" value="109000" step="any">
+            <input type="number" class="slider-val-input" id="whatif_price_input" value="80000" step="any">
             <span class="slider-val-unit">$</span>
           </span>
         </div>
@@ -3208,10 +3208,44 @@ function sane(v, kind) {
   return isFinite(v) && v >= SANITY[kind].min && v <= SANITY[kind].max;
 }
 
-async function refreshAllLiveData() {
-  setCardLoading('Btc'); setCardLoading('Rub'); setCardLoading('Diff');
+const LIVE_CACHE_KEY = 'btc_live_cache_v1';
+function loadLiveCache() {
+  try {
+    const raw = localStorage.getItem(LIVE_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') return null;
+    return obj;
+  } catch { return null; }
+}
+function saveLiveCache(partial) {
+  const cur = loadLiveCache() || {};
+  const next = { ...cur, ...partial, ts: Date.now() };
+  try { localStorage.setItem(LIVE_CACHE_KEY, JSON.stringify(next)); } catch {}
+}
+// Прогреваем live-переменные из кеша на старте, чтобы расчёты не сидели на дефолтных слайдерах,
+// если API временно недоступен (особенно на iOS Safari при file:// или CORS).
+(function primeLiveFromCache() {
+  const c = loadLiveCache();
+  if (!c) return;
+  if (sane(c.btc, 'btc')) window._liveBtcPrice = c.btc;
+  if (sane(c.rub, 'rub')) window._liveUsdRub = c.rub;
+  if (sane(c.diff, 'diff')) window._liveDifficulty = c.diff;
+})();
 
-  // Run in parallel
+async function refreshAllLiveData() {
+  // Покажем сразу значения из кеша если есть — чтобы не моргало "Загрузка..." пока fetch идёт
+  const cached = loadLiveCache();
+  if (cached && sane(cached.btc, 'btc')) {
+    renderLiveCard('Btc', cached.btc, 'кеш', v => '$' + fmt(Math.round(v)));
+  } else setCardLoading('Btc');
+  if (cached && sane(cached.rub, 'rub')) {
+    renderLiveCard('Rub', cached.rub, 'кеш', v => v.toFixed(2) + ' ₽');
+  } else setCardLoading('Rub');
+  if (cached && sane(cached.diff, 'diff')) {
+    renderLiveCard('Diff', cached.diff, 'кеш', v => v.toFixed(2) + ' T');
+  } else setCardLoading('Diff');
+
   const [btc, rub, diff] = await Promise.all([
     fetchBtcPrice(),
     fetchUsdRub(),
@@ -3220,29 +3254,51 @@ async function refreshAllLiveData() {
 
   if (btc && sane(btc.value, 'btc')) {
     window._liveBtcPrice = btc.value;
+    saveLiveCache({ btc: btc.value });
     renderLiveCard('Btc', btc.value, btc.source, v => '$' + fmt(Math.round(v)));
   } else {
     if (btc) console.warn('[live] BTC price out of sanity range:', btc);
-    window._liveBtcPrice = null;
-    renderLiveCard('Btc', null);
+    // Если API не ответил — оставляем то что было загружено из localStorage cache
+    const cached = loadLiveCache();
+    if (cached && sane(cached.btc, 'btc')) {
+      window._liveBtcPrice = cached.btc;
+      renderLiveCard('Btc', cached.btc, 'кеш', v => '$' + fmt(Math.round(v)));
+    } else {
+      window._liveBtcPrice = null;
+      renderLiveCard('Btc', null);
+    }
   }
 
   if (rub && sane(rub.value, 'rub')) {
     window._liveUsdRub = rub.value;
+    saveLiveCache({ rub: rub.value });
     renderLiveCard('Rub', rub.value, rub.source, v => v.toFixed(2) + ' ₽');
   } else {
     if (rub) console.warn('[live] USD/RUB out of sanity range:', rub);
-    window._liveUsdRub = null;
-    renderLiveCard('Rub', null);
+    const cached = loadLiveCache();
+    if (cached && sane(cached.rub, 'rub')) {
+      window._liveUsdRub = cached.rub;
+      renderLiveCard('Rub', cached.rub, 'кеш', v => v.toFixed(2) + ' ₽');
+    } else {
+      window._liveUsdRub = null;
+      renderLiveCard('Rub', null);
+    }
   }
 
   if (diff && sane(diff.value, 'diff')) {
     window._liveDifficulty = diff.value;
+    saveLiveCache({ diff: diff.value });
     renderLiveCard('Diff', diff.value, diff.source, v => v.toFixed(2) + ' T');
   } else {
     if (diff) console.warn('[live] Difficulty out of sanity range:', diff);
-    window._liveDifficulty = null;
-    renderLiveCard('Diff', null);
+    const cached = loadLiveCache();
+    if (cached && sane(cached.diff, 'diff')) {
+      window._liveDifficulty = cached.diff;
+      renderLiveCard('Diff', cached.diff, 'кеш', v => v.toFixed(2) + ' T');
+    } else {
+      window._liveDifficulty = null;
+      renderLiveCard('Diff', null);
+    }
   }
 }
 
