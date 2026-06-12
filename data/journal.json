@@ -1,10 +1,39 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-11T00:00:00.000Z",
-  "updatedBy": "init",
+  "updatedAt": "2026-06-12T14:00:00.000Z",
+  "updatedBy": "csv-restore",
   "journals": {
     "D": [],
-    "G": []
+    "G": [
+      {
+        "id": 1743638400000,
+        "month": "2026-04",
+        "location": "birsk",
+        "btcGiven": 0,
+        "kwh": 263325,
+        "rubElec": 1316625,
+        "hashrate": 20100,
+        "difficulty": 135.59,
+        "btcMined": 0.2741,
+        "btcSold": 0.15,
+        "salePrice": 69000,
+        "usdRub": 78
+      },
+      {
+        "id": 1746230400000,
+        "month": "2026-05",
+        "location": "birsk",
+        "btcGiven": 0,
+        "kwh": 270000,
+        "rubElec": 1351800,
+        "hashrate": 19000,
+        "difficulty": 136.61,
+        "btcMined": 0.2777,
+        "btcSold": 0.2,
+        "salePrice": 75000,
+        "usdRub": 75
+      }
+    ]
   },
   "diffCache": {}
 }

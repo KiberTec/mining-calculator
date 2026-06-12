@@ -1205,11 +1205,11 @@
 
     <!-- Charts -->
     <div class="full-panel section-gap" id="chartPanel1">
-      <div class="panel-title">Доход / расходы / прибыль по месяцам (₽)</div>
+      <div class="panel-title">Доход / расходы / фин. итог по месяцам (₽)</div>
       <div class="chart-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Доход</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Доход <span style="color:var(--text3);font-size:10px;">(продажи + остаток BTC по тек. цене)</span></div>
         <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Расходы</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Прибыль</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Фин. итог</div>
       </div>
       <div class="chart-wrap tall"><canvas id="j_chart1"></canvas></div>
     </div>
@@ -1779,6 +1779,17 @@ function filterByLocation(entries) {
   return entries.filter(e => (e.location || 'birsk') === currentLocationFilter);
 }
 
+// ---- Current market rates (used for mark-to-market valuations) ----
+function currentBtcPriceUsd() {
+  const live = window._liveBtcPrice;
+  if (isFinite(live) && live >= 1000) return live;
+  const slider = +document.getElementById('btc_price').value;
+  return (isFinite(slider) && slider >= 1000) ? slider : 0;
+}
+function currentUsdRub() {
+  return window._liveUsdRub || +document.getElementById('usd_rub').value || 0;
+}
+
 // ---- Per-entry derived numbers (with Дема commission) ----
 function entryComissionBtc(e) {
   return e.btcGiven || 0;
@@ -1800,6 +1811,29 @@ function entryTotalCostUsd(e) {
 }
 function entryTotalCostRub(e) {
   return e.rubElec + entryComissionUsd(e) * e.usdRub;
+}
+
+// Фин. итог по записи (mark-to-market в рублях):
+//   реализованный кэш от продаж + текущая стоимость остатков BTC − все расходы.
+// Это «сколько реально стоит этот месяц с учётом сегодняшней цены битка».
+function entryFinResultRub(e) {
+  const realizedRub = (e.btcSold || 0) * (e.salePrice || 0) * (e.usdRub || 0);
+  const netMined = entryNetBtcMined(e);
+  const heldBtc = Math.max(0, netMined - (e.btcSold || 0));
+  const curP = currentBtcPriceUsd();
+  const curR = currentUsdRub();
+  const hodlValRub = (curP > 0 && curR > 0) ? heldBtc * curP * curR : 0;
+  return realizedRub + hodlValRub - entryTotalCostRub(e);
+}
+// Стоимость месяца «как доход»: продажи + остатки по текущей цене.
+function entryRevenueMtmRub(e) {
+  const realizedRub = (e.btcSold || 0) * (e.salePrice || 0) * (e.usdRub || 0);
+  const netMined = entryNetBtcMined(e);
+  const heldBtc = Math.max(0, netMined - (e.btcSold || 0));
+  const curP = currentBtcPriceUsd();
+  const curR = currentUsdRub();
+  const hodlValRub = (curP > 0 && curR > 0) ? heldBtc * curP * curR : 0;
+  return realizedRub + hodlValRub;
 }
 function saveEntries(entries, user) {
   const u = user || (currentUser === 'DG' ? 'G' : currentUser);
@@ -1990,7 +2024,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
       return [
         user, LOC_META[loc].label, e.month, e.kwh, e.rubElec, e.btcGiven || 0,
         e.hashrate, e.difficulty, e.btcMined, e.btcSold, e.salePrice, e.usdRub,
-        Math.round(revenueRub), Math.round(m.profRub), Math.round(m.costPerBtc)
+        Math.round(revenueRub), Math.round(entryFinResultRub(e)), Math.round(m.costPerBtc)
       ];
     });
   };
@@ -2003,7 +2037,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
     rows = buildRows(currentUser);
   }
   if (rows.length === 0) { alert('Журнал пуст'); return; }
-  const headers = ['Пользователь','Локация','Месяц','кВтч','Заплачено ₽','Отдано BTC','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Прибыль ₽','Себестоимость 1 BTC $'];
+  const headers = ['Пользователь','Локация','Месяц','кВтч','Заплачено ₽','Отдано BTC','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Фин. итог ₽','Себестоимость 1 BTC $'];
   const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -2250,8 +2284,8 @@ function renderJournal() {
     <div class="metric-card"><div class="metric-label">Доход от продаж</div><div class="metric-value">${fmt(Math.round(tot.revRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(tot.revUsd))}</span></div></div>
     <div class="metric-card"><div class="metric-label">Стоимость HODL сейчас <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0;">@ $${fmtEn(Math.round(curBtcPrice))}</span></div><div class="metric-value blue">${fmt(Math.round(hodlValueRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(hodlValueUsd))}</span></div></div>
 
-    <div class="metric-card"><div class="metric-label">Прибыль реализованная <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(только от продаж)</span></div><div class="metric-value ${profRub>=0?'pos':'neg'}">${fmt(Math.round(profRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(profUsd))}</span></div></div>
-    <div class="metric-card" style="border:0.5px solid ${mtmRub>=0?'rgba(29,185,122,0.35)':'rgba(226,84,75,0.35)'};background:${mtmRub>=0?'rgba(29,185,122,0.05)':'rgba(226,84,75,0.05)'};"><div class="metric-label">Прибыль с HODL <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(mark-to-market)</span></div><div class="metric-value ${mtmRub>=0?'pos':'neg'}">${fmt(Math.round(mtmRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(mtmUsd))}</span></div></div>
+    <div class="metric-card"><div class="metric-label">Реализованный кэш <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(продажи − расходы)</span></div><div class="metric-value ${profRub>=0?'pos':'neg'}">${fmt(Math.round(profRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(profUsd))}</span></div></div>
+    <div class="metric-card" style="border:0.5px solid ${mtmRub>=0?'rgba(29,185,122,0.35)':'rgba(226,84,75,0.35)'};background:${mtmRub>=0?'rgba(29,185,122,0.05)':'rgba(226,84,75,0.05)'};"><div class="metric-label">Фин. итог <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(с учётом BTC по тек. цене)</span></div><div class="metric-value ${mtmRub>=0?'pos':'neg'}">${fmt(Math.round(mtmRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(mtmUsd))}</span></div></div>
     <div class="metric-card"><div class="metric-label">Себест. 1 BTC <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(среднее)</span></div><div class="metric-value">$${fmtEn(Math.round(avgCostPerBtc))}<br><span style="font-size:13px;color:var(--text2)">${fmt(Math.round(avgCostPerBtc * curUsdRub))} ₽</span></div></div>
     ${demaCard}
   `;
@@ -2271,8 +2305,7 @@ function renderJournal() {
       const comissionBtc = entryComissionBtc(e);
       const comissionUsd = entryComissionUsd(e);
       const netMined = e.btcMined - comissionBtc;
-      const totalCostRub = e.rubElec + comissionUsd * e.usdRub;
-      const rowProfRub = revRub - totalCostRub;
+      const rowFinRub = entryFinResultRub(e);
       const totalCostUsd = entryTotalCostUsd(e);
       const costPerBtc = netMined > 0 ? totalCostUsd / netMined : 0;
       const kept = netMined - e.btcSold;
@@ -2296,7 +2329,7 @@ function renderJournal() {
           <td class="num">$${fmtEn(e.salePrice)}</td>
           <td class="num">${e.usdRub}</td>
           <td class="num">${fmt(Math.round(revRub))} ₽</td>
-          <td class="num ${rowProfRub>=0?'pos':'neg'}">${fmt(Math.round(rowProfRub))} ₽</td>
+          <td class="num ${rowFinRub>=0?'pos':'neg'}" title="Фин. итог = продажи + остаток BTC по текущей цене − расходы">${fmt(Math.round(rowFinRub))} ₽</td>
           <td class="num muted">$${fmtEn(Math.round(costPerBtc))}</td>
           <td class="actions-cell">
             <button class="row-btn" title="Редактировать" onclick="editEntry(${e.id})">✎</button>
@@ -2311,7 +2344,7 @@ function renderJournal() {
           <thead>
             <tr>
               ${locTh}<th>Месяц</th><th>кВтч</th><th>Эл-во ₽</th><th>Намайнено</th><th>Продано</th><th>Осталось</th>
-              <th>Цена $</th><th>Курс ₽</th><th>Доход ₽</th><th>Прибыль ₽</th><th>Себест/BTC</th><th></th>
+              <th>Цена $</th><th>Курс ₽</th><th>Доход ₽</th><th title="Фин. итог = продажи + остаток BTC по текущей цене − расходы">Фин. итог ₽</th><th>Себест/BTC</th><th></th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
@@ -2325,7 +2358,7 @@ function renderJournal() {
 
   // Restore per-user panel titles
   const t1 = document.querySelector('#chartPanel1 .panel-title');
-  if (t1) t1.textContent = 'Доход / расходы / прибыль по месяцам (₽)';
+  if (t1) t1.textContent = 'Доход / расходы / фин. итог по месяцам (₽)';
   const t2 = document.querySelector('#chartPanel2 .panel-title');
   if (t2) t2.textContent = 'Биткоин: добыто / продано / удержано (BTC)';
   const t3 = document.querySelector('#chartPanel3 .panel-title');
@@ -2334,9 +2367,9 @@ function renderJournal() {
   // Restore default chart legends
   const lg1 = document.querySelector('#chartPanel1 .chart-legend');
   if (lg1) lg1.innerHTML = `
-    <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Доход</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Доход <span style="color:var(--text3);font-size:10px;">(продажи + остаток BTC по тек. цене)</span></div>
     <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Расходы</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Прибыль</div>`;
+    <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Фин. итог</div>`;
   const lg2 = document.querySelector('#chartPanel2 .chart-legend');
   if (lg2) lg2.innerHTML = `
     <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Намайнено</div>
@@ -2596,8 +2629,10 @@ function renderJournalCharts(entries) {
     }
     return e.month;
   });
-  const revenue = entries.map(e => Math.round(e.btcSold * e.salePrice * e.usdRub / 1000));
-  const costs   = entries.map(e => Math.round((e.rubElec + entryComissionUsd(e) * e.usdRub) / 1000));
+  // «Доход» в графике — с учётом текущей рыночной стоимости остатка BTC (mark-to-market).
+  // Иначе все месяцы где ты копил, а не продавал, выглядели бы убыточными.
+  const revenue = entries.map(e => Math.round(entryRevenueMtmRub(e) / 1000));
+  const costs   = entries.map(e => Math.round(entryTotalCostRub(e) / 1000));
   const profit  = entries.map((e,i) => revenue[i] - costs[i]);
   const mined   = entries.map(e => +entryNetBtcMined(e).toFixed(5));
   const sold    = entries.map(e => +e.btcSold.toFixed(5));
@@ -2615,7 +2650,7 @@ function renderJournalCharts(entries) {
     data: { labels, datasets: [
       { label:'Доход', data:revenue, backgroundColor:'rgba(29,185,122,0.7)', borderColor:'#1db97a', borderWidth:1 },
       { label:'Расходы', data:costs, backgroundColor:'rgba(226,84,75,0.7)', borderColor:'#e2544b', borderWidth:1 },
-      { label:'Прибыль', data:profit, backgroundColor:'rgba(74,144,226,0.7)', borderColor:'#4a90e2', borderWidth:1 },
+      { label:'Фин. итог', data:profit, backgroundColor:'rgba(74,144,226,0.7)', borderColor:'#4a90e2', borderWidth:1 },
     ]},
     options: chartOpts(v => fmt(v)+'k ₽', ctx => ctx.dataset.label+': '+fmt(ctx.parsed.y)+' тыс. ₽')
   });
