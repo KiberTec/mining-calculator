@@ -1207,7 +1207,8 @@
     <div class="full-panel section-gap" id="chartPanel1">
       <div class="panel-title">Доход / расходы / фин. итог по месяцам (₽)</div>
       <div class="chart-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Доход <span style="color:var(--text3);font-size:10px;">(продажи + остаток BTC по тек. цене)</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Кэш от продаж</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Стоимость HODL <span style="color:var(--text3);font-size:10px;">(остаток BTC × тек. цена)</span></div>
         <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Расходы</div>
         <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Фин. итог</div>
       </div>
@@ -2367,7 +2368,8 @@ function renderJournal() {
   // Restore default chart legends
   const lg1 = document.querySelector('#chartPanel1 .chart-legend');
   if (lg1) lg1.innerHTML = `
-    <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Доход <span style="color:var(--text3);font-size:10px;">(продажи + остаток BTC по тек. цене)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Кэш от продаж</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Стоимость HODL <span style="color:var(--text3);font-size:10px;">(остаток BTC × тек. цена)</span></div>
     <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Расходы</div>
     <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Фин. итог</div>`;
   const lg2 = document.querySelector('#chartPanel2 .chart-legend');
@@ -2629,11 +2631,16 @@ function renderJournalCharts(entries) {
     }
     return e.month;
   });
-  // «Доход» в графике — с учётом текущей рыночной стоимости остатка BTC (mark-to-market).
-  // Иначе все месяцы где ты копил, а не продавал, выглядели бы убыточными.
-  const revenue = entries.map(e => Math.round(entryRevenueMtmRub(e) / 1000));
+  // Доход в графике раскладываем на 2 части (stacked): кэш от продаж + остаток BTC по тек. цене.
+  // Так видно: сколько ушло в наличку и сколько накоплено в битке.
+  const cashRev = entries.map(e => Math.round(((e.btcSold || 0) * (e.salePrice || 0) * (e.usdRub || 0)) / 1000));
+  const hodlRev = entries.map(e => {
+    const heldBtc = Math.max(0, entryNetBtcMined(e) - (e.btcSold || 0));
+    const curP = currentBtcPriceUsd(), curR = currentUsdRub();
+    return (curP > 0 && curR > 0) ? Math.round((heldBtc * curP * curR) / 1000) : 0;
+  });
   const costs   = entries.map(e => Math.round(entryTotalCostRub(e) / 1000));
-  const profit  = entries.map((e,i) => revenue[i] - costs[i]);
+  const profit  = entries.map((e,i) => (cashRev[i] + hodlRev[i]) - costs[i]);
   const mined   = entries.map(e => +entryNetBtcMined(e).toFixed(5));
   const sold    = entries.map(e => +e.btcSold.toFixed(5));
   const kept    = entries.map((e,i) => +(mined[i] - sold[i]).toFixed(5));
@@ -2643,16 +2650,24 @@ function renderJournalCharts(entries) {
     return Math.round(entryTotalCostUsd(e) / netMined);
   });
 
-  // Chart 1: revenue / costs / profit (bar)
+  // Chart 1: stacked Доход (Кэш + HODL) + Расходы + Фин. итог. Каждая «свеча» в своём стеке.
   if (jChart1) jChart1.destroy();
+  const baseOpts = chartOpts(v => fmt(v)+'k ₽', ctx => ctx.dataset.label+': '+fmt(ctx.parsed.y)+' тыс. ₽');
   jChart1 = new Chart(document.getElementById('j_chart1'), {
     type: 'bar',
     data: { labels, datasets: [
-      { label:'Доход', data:revenue, backgroundColor:'rgba(29,185,122,0.7)', borderColor:'#1db97a', borderWidth:1 },
-      { label:'Расходы', data:costs, backgroundColor:'rgba(226,84,75,0.7)', borderColor:'#e2544b', borderWidth:1 },
-      { label:'Фин. итог', data:profit, backgroundColor:'rgba(74,144,226,0.7)', borderColor:'#4a90e2', borderWidth:1 },
+      { label:'Кэш от продаж', data:cashRev, stack:'rev', backgroundColor:'rgba(29,185,122,0.75)', borderColor:'#1db97a', borderWidth:1 },
+      { label:'Стоимость HODL', data:hodlRev, stack:'rev', backgroundColor:'rgba(247,147,26,0.7)',  borderColor:'#f7931a', borderWidth:1 },
+      { label:'Расходы',         data:costs,   stack:'exp', backgroundColor:'rgba(226,84,75,0.7)',  borderColor:'#e2544b', borderWidth:1 },
+      { label:'Фин. итог',       data:profit,  stack:'res', backgroundColor:'rgba(74,144,226,0.7)', borderColor:'#4a90e2', borderWidth:1 },
     ]},
-    options: chartOpts(v => fmt(v)+'k ₽', ctx => ctx.dataset.label+': '+fmt(ctx.parsed.y)+' тыс. ₽')
+    options: {
+      ...baseOpts,
+      scales: {
+        x: { ...baseOpts.scales.x, stacked: true },
+        y: { ...baseOpts.scales.y, stacked: true }
+      }
+    }
   });
 
   // Chart 2: BTC mined / sold / kept (bar)
