@@ -682,6 +682,82 @@
   .loc-pill.loc-birsk { background: rgba(74,144,226,0.12); color: #6ba8f0; }
   .loc-pill.loc-dema  { background: rgba(247,147,26,0.12); color: #f7931a; }
 
+  /* === Industry KPIs === */
+  .kpi-vs {
+    display:flex; align-items:baseline; gap:6px;
+    margin-top: 4px;
+  }
+  .kpi-vs .kpi-bench {
+    font-size: 11px; color: var(--text3); font-weight:500;
+  }
+  .kpi-vs .kpi-delta {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: 8px;
+  }
+  .kpi-vs .kpi-delta.pos { color: #1db97a; background: rgba(29,185,122,0.12); }
+  .kpi-vs .kpi-delta.neg { color: #e2544b; background: rgba(226,84,75,0.12); }
+  .kpi-vs .kpi-delta.flat { color: var(--text2); background: rgba(255,255,255,0.04); }
+
+  /* === Location leaderboard === */
+  .leaderboard-wrap { overflow-x: auto; }
+  .leaderboard { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .leaderboard th, .leaderboard td { padding: 12px 12px; text-align: right; border-bottom: 0.5px solid var(--border); }
+  .leaderboard th:first-child, .leaderboard td:first-child { text-align: left; }
+  .leaderboard th {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text3); font-weight: 600; background: var(--bg3);
+  }
+  .leaderboard td.winner { color: var(--green); font-weight: 700; }
+  .leaderboard td.loser { color: var(--red); font-weight: 500; }
+  .leaderboard td.muted { color: var(--text3); }
+  .leaderboard tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .leaderboard .loc-cell { display:flex; align-items:center; gap:8px; }
+
+  /* === Efficiency funnel === */
+  .funnel { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+  .funnel-row {
+    display: grid; grid-template-columns: 140px 1fr auto; align-items: center; gap: 12px;
+    font-size: 13px;
+  }
+  .funnel-label { color: var(--text2); font-weight: 500; }
+  .funnel-bar-wrap {
+    height: 28px; background: var(--bg3); border-radius: 6px; overflow: hidden; position: relative;
+  }
+  .funnel-bar {
+    height: 100%; display:flex; align-items:center; justify-content:flex-end;
+    padding-right: 10px; font-size: 12px; font-weight: 600; color: #fff;
+    transition: width 0.4s ease;
+  }
+  .funnel-value { font-size: 12px; color: var(--text); font-weight: 600; min-width: 80px; text-align: right; }
+  .funnel-loss { color: var(--red); font-size: 10px; margin-left: 4px; }
+  @media (max-width: 640px) {
+    .funnel-row { grid-template-columns: 90px 1fr auto; gap: 8px; font-size: 12px; }
+    .funnel-value { min-width: 60px; font-size: 11px; }
+  }
+
+  /* === Month heatmap === */
+  .heatmap-wrap { overflow-x: auto; padding: 4px 0; }
+  .heatmap { width: 100%; border-collapse: separate; border-spacing: 4px; min-width: 480px; }
+  .heatmap th, .heatmap td {
+    padding: 10px 8px; text-align: center; font-size: 12px; border-radius: 6px;
+  }
+  .heatmap th {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text3); font-weight: 600; background: transparent;
+  }
+  .heatmap td.heat-month { background: var(--bg3); color: var(--text); font-weight: 600; text-align: left; padding-left: 12px; }
+  .heatmap td.heat-cell { font-weight: 600; color: #fff; min-width: 60px; }
+  .heatmap-legend {
+    display: flex; gap: 12px; align-items: center; margin-top: 10px;
+    font-size: 11px; color: var(--text3);
+  }
+  .heatmap-legend-scale {
+    display: flex; gap: 2px;
+  }
+  .heatmap-legend-scale div {
+    width: 18px; height: 14px; border-radius: 2px;
+  }
+
   /* Comparison view */
   .compare-table-wrap { overflow-x: auto; }
   .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1173,6 +1249,21 @@
       </div>
     </div>
 
+    <!-- Industry KPIs -->
+    <div class="full-panel section-gap" id="industryKpisPanel">
+      <div class="panel-title">🏭 Индустриальные KPI <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">по фильтру локации</span></div>
+      <div class="cards-grid" id="j_industry_kpis"></div>
+      <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg3); border-radius: var(--radius); font-size: 12px; color: var(--text2); line-height: 1.5;">
+        🔬 <strong style="color:var(--text);">J/TH</strong> — энергоэффективность: S21 ≈ 15, S19 ≈ 29. Чем ниже — тем лучше. <strong style="color:var(--text);">Realization rate</strong> — % реальной добычи vs теоретической, 95%+ = здоровая ферма. <strong style="color:var(--text);">Hashprice</strong> — индустриальный бенчмарк $/TH/day; сравни с нашим фактом.
+      </div>
+    </div>
+
+    <!-- Location leaderboard -->
+    <div class="full-panel section-gap" id="locationLeaderboardPanel" style="display:none;">
+      <div class="panel-title">🌍 Сравнение локаций <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">Бирск vs Дема</span></div>
+      <div id="j_location_leaderboard"></div>
+    </div>
+
     <!-- BTC Position / PnL panel -->
     <div class="full-panel section-gap" id="btcPositionPanel" style="display:none;">
       <div class="panel-title">💎 BTC накопления — нереализованный PnL</div>
@@ -1225,9 +1316,34 @@
       <div class="chart-wrap tall"><canvas id="j_chart2"></canvas></div>
     </div>
 
-    <div class="full-panel" id="chartPanel3">
+    <div class="full-panel section-gap" id="chartPanel3">
       <div class="panel-title">Себестоимость 1 BTC по месяцам ($)</div>
       <div class="chart-wrap"><canvas id="j_chart3"></canvas></div>
+    </div>
+
+    <!-- Hashprice benchmark chart -->
+    <div class="full-panel section-gap" id="chartPanelHashprice">
+      <div class="panel-title">⚡ Hashprice: наш факт vs сеть ($/TH/day)</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Наш hashprice (факт)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Сетевой hashprice (бенчмарк)</div>
+      </div>
+      <div class="chart-wrap tall"><canvas id="j_chartHashprice"></canvas></div>
+      <div style="margin-top: 10px; padding: 10px 14px; background: var(--bg3); border-radius: var(--radius); font-size: 12px; color: var(--text2); line-height: 1.5;">
+        🌐 Сетевой hashprice = (3.125 BTC × 144 блоков × цена BTC) / network_hashrate. Если наш факт ниже сети — у нас простои/неоптимальный пул. Если выше — нам везёт с пулом и uptime.
+      </div>
+    </div>
+
+    <!-- Efficiency funnel -->
+    <div class="full-panel section-gap" id="efficiencyFunnelPanel">
+      <div class="panel-title">🔄 Воронка эффективности <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">где теряем BTC</span></div>
+      <div id="j_efficiency_funnel"></div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="full-panel" id="heatmapPanel">
+      <div class="panel-title">🗓 Тепловая карта месяцев <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">по ключевым метрикам</span></div>
+      <div id="j_month_heatmap"></div>
     </div>
 
   </div><!-- /tab-journal -->
@@ -1318,7 +1434,7 @@ try {
 } catch(e) { /* ignore */ }
 
 let sChart = null, cChart = null;
-let jChart1 = null, jChart2 = null, jChart3 = null;
+let jChart1 = null, jChart2 = null, jChart3 = null, jChartHashprice = null;
 let editingId = null;
 
 // ============================================
@@ -1836,6 +1952,149 @@ function entryRevenueMtmRub(e) {
   const hodlValRub = (curP > 0 && curR > 0) ? heldBtc * curP * curR : 0;
   return realizedRub + hodlValRub;
 }
+function entryRevenueMtmUsd(e) {
+  const r = entryRevenueMtmRub(e);
+  const curR = currentUsdRub();
+  return curR > 0 ? r / curR : 0;
+}
+
+// ============================================================
+// ИНДУСТРИАЛЬНЫЕ KPI: эффективность / финансы / hashprice
+// ============================================================
+
+const MONTH_DAYS = (ym) => {
+  if (!ym) return 30;
+  const [y, m] = ym.split('-').map(Number);
+  if (!y || !m) return 30;
+  return new Date(y, m, 0).getDate();
+};
+const MONTH_HOURS = (ym) => MONTH_DAYS(ym) * 24;
+const BLOCK_REWARD = 3.125;
+const BLOCKS_PER_DAY = 144;
+const NETWORK_TARGET = Math.pow(2, 32);
+
+// J/TH — энергоэффективность фермы по факту.
+//   J/TH = kWh × 1000 / (hashrate_TH × часов_в_месяце)
+//   Современные асики (S21 Pro): ~15 J/TH. S19 Pro: ~29 J/TH.
+function entryJperTH(e) {
+  const hours = MONTH_HOURS(e.month);
+  if (!hours || !e.hashrate || e.hashrate <= 0 || !e.kwh) return 0;
+  return (e.kwh * 1000) / (e.hashrate * hours);
+}
+
+// Теоретическая добыча по формуле (если бы uptime = 100% при заданных hashrate и difficulty)
+function entryTheoreticalBtc(e) {
+  const diff = e.difficulty || window._liveDifficulty || 0;
+  if (!diff || !e.hashrate) return 0;
+  const seconds = MONTH_DAYS(e.month) * 86400;
+  // hashrate в TH/s, diff в T — единицы сокращаются: (TH × s × reward) / (T × 2^32)
+  return (e.hashrate * seconds * BLOCK_REWARD) / (diff * NETWORK_TARGET);
+}
+
+// Realization rate % — фактическая добыча vs теоретическая.
+//   95-100% — здоровая ферма. <90% — простои / проблемы.
+function entryRealizationPct(e) {
+  const theor = entryTheoreticalBtc(e);
+  if (!theor || theor <= 0) return 0;
+  return (e.btcMined / theor) * 100;
+}
+
+// Оценка uptime (упрощённая): equiv часов работы при 100% hashrate / часов в месяце.
+//   uptime ≈ btcMined / theoreticalBtc × 100 (тождественно realization rate в нашей модели)
+function entryUptimePct(e) {
+  return entryRealizationPct(e);
+}
+
+// All-in cost per BTC ($USD) — себестоимость с учётом комиссии партнёру.
+function entryAllInCostPerBtc(e) {
+  const net = entryNetBtcMined(e);
+  const cost = entryTotalCostUsd(e);
+  return net > 0 ? cost / net : 0;
+}
+
+// Break-even BTC price ($USD) — при какой цене BTC данный месяц вышел в 0.
+//   Расчёт от расходов и net добычи. Это та же цифра что All-in cost per BTC.
+function entryBreakEvenBtcPriceUsd(e) {
+  return entryAllInCostPerBtc(e);
+}
+
+// Mining margin % — какая доля выручки осталась после расходов (mark-to-market).
+function entryMiningMarginPct(e) {
+  const rev = entryRevenueMtmRub(e);
+  const cost = entryTotalCostRub(e);
+  if (rev <= 0) return -100;
+  return ((rev - cost) / rev) * 100;
+}
+
+// Себестоимость 1 kWh в USD (наш тариф в индустриальных единицах).
+function entryCostPerKwhUsd(e) {
+  return e.kwh > 0 ? entryElecUsd(e) / e.kwh : 0;
+}
+
+// Hashprice — gross USD заработок на 1 TH/s в день.
+//   Используем фактическую добычу (gross, до комиссии) и цену продажи (как proxy на market price того месяца).
+function entryActualHashpriceUsdPerThDay(e) {
+  if (!e.hashrate || e.hashrate <= 0) return 0;
+  const days = MONTH_DAYS(e.month);
+  const price = e.salePrice > 0 ? e.salePrice : (window._liveBtcPrice || 0);
+  if (!price) return 0;
+  const revUsd = e.btcMined * price;
+  return revUsd / (e.hashrate * days);
+}
+
+// Сетевой hashprice по формуле:
+//   $/TH/day = (reward × blocks_per_day × price) / network_hashrate_TH
+//   diffT — сложность в «T» (тера = ×1e12), так что network_TH/s = diffT × 2^32 / 600
+//   (т.к. реальный hashrate = diffT × 1e12 × 2^32 / 600 H/s, делим на 1e12 → TH/s)
+function networkHashpriceUsdPerThDay(priceUsd, diffT) {
+  if (!priceUsd || !diffT) return 0;
+  const networkTh = (diffT * NETWORK_TARGET) / 600;
+  return (BLOCK_REWARD * BLOCKS_PER_DAY * priceUsd) / networkTh;
+}
+
+// Свёртка массива записей в агрегаты для leaderboard'а (по локации / по всему).
+function aggregateEntries(entries) {
+  if (!entries || !entries.length) return null;
+  let kwh = 0, rubElec = 0, elecUsd = 0, costUsd = 0, btcMinedGross = 0, btcMinedNet = 0,
+      btcSold = 0, btcGiven = 0, revRubReal = 0, revUsdReal = 0,
+      hashSum = 0, hashCnt = 0, jthSum = 0, jthCnt = 0,
+      realSum = 0, realCnt = 0;
+  for (const e of entries) {
+    kwh += e.kwh || 0;
+    rubElec += e.rubElec || 0;
+    elecUsd += entryElecUsd(e);
+    costUsd += entryTotalCostUsd(e);
+    btcMinedGross += e.btcMined || 0;
+    btcMinedNet += entryNetBtcMined(e);
+    btcSold += e.btcSold || 0;
+    btcGiven += entryComissionBtc(e);
+    revUsdReal += (e.btcSold || 0) * (e.salePrice || 0);
+    revRubReal += (e.btcSold || 0) * (e.salePrice || 0) * (e.usdRub || 0);
+    if (e.hashrate > 0) { hashSum += e.hashrate; hashCnt++; }
+    const j = entryJperTH(e); if (j > 0) { jthSum += j; jthCnt++; }
+    const r = entryRealizationPct(e); if (r > 0) { realSum += r; realCnt++; }
+  }
+  const heldBtc = Math.max(0, btcMinedNet - btcSold);
+  const curP = currentBtcPriceUsd();
+  const curR = currentUsdRub();
+  const hodlUsd = curP > 0 ? heldBtc * curP : 0;
+  const hodlRub = curR > 0 ? hodlUsd * curR : 0;
+  const revRubMtm = revRubReal + hodlRub;
+  const totalCostRub = entries.reduce((s, e) => s + entryTotalCostRub(e), 0);
+  return {
+    count: entries.length,
+    kwh, rubElec, costUsd, totalCostRub,
+    btcMinedGross, btcMinedNet, btcSold, btcGiven, heldBtc,
+    revRubReal, revUsdReal, revRubMtm, hodlUsd, hodlRub,
+    finResultRub: revRubMtm - totalCostRub,
+    avgHashrate: hashCnt > 0 ? hashSum / hashCnt : 0,
+    avgJperTH: jthCnt > 0 ? jthSum / jthCnt : 0,
+    avgRealizationPct: realCnt > 0 ? realSum / realCnt : 0,
+    allInCostPerBtc: btcMinedNet > 0 ? costUsd / btcMinedNet : 0,
+    marginPct: revRubMtm > 0 ? ((revRubMtm - totalCostRub) / revRubMtm) * 100 : -100,
+    costPerKwhUsd: kwh > 0 ? elecUsd / kwh : 0
+  };
+}
 function saveEntries(entries, user) {
   const u = user || (currentUser === 'DG' ? 'G' : currentUser);
   localStorage.setItem(storageKeyFor(u), JSON.stringify(entries));
@@ -2022,10 +2281,18 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
       const loc = e.location || 'birsk';
       const m = computeEntryMetrics(e);
       const revenueRub = e.btcSold * e.salePrice * e.usdRub;
+      const theor = entryTheoreticalBtc(e);
+      const jth = entryJperTH(e);
+      const real = entryRealizationPct(e);
+      const margin = entryMiningMarginPct(e);
+      const hpOur = entryActualHashpriceUsdPerThDay(e);
+      const hpNet = networkHashpriceUsdPerThDay(e.salePrice || window._liveBtcPrice || 0, e.difficulty || 0);
       return [
         user, LOC_META[loc].label, e.month, e.kwh, e.rubElec, e.btcGiven || 0,
         e.hashrate, e.difficulty, e.btcMined, e.btcSold, e.salePrice, e.usdRub,
-        Math.round(revenueRub), Math.round(entryFinResultRub(e)), Math.round(m.costPerBtc)
+        Math.round(revenueRub), Math.round(entryFinResultRub(e)), Math.round(m.costPerBtc),
+        theor.toFixed(5), jth ? jth.toFixed(2) : '', real ? real.toFixed(1) : '',
+        margin.toFixed(1), hpOur ? hpOur.toFixed(4) : '', hpNet ? hpNet.toFixed(4) : ''
       ];
     });
   };
@@ -2038,7 +2305,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
     rows = buildRows(currentUser);
   }
   if (rows.length === 0) { alert('Журнал пуст'); return; }
-  const headers = ['Пользователь','Локация','Месяц','кВтч','Заплачено ₽','Отдано BTC','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Фин. итог ₽','Себестоимость 1 BTC $'];
+  const headers = ['Пользователь','Локация','Месяц','кВтч','Заплачено ₽','Отдано BTC','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Фин. итог ₽','Себестоимость 1 BTC $','Теор. BTC','J/TH','Realization %','Маржа %','Hashprice наш','Hashprice сеть'];
   const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -2291,6 +2558,11 @@ function renderJournal() {
     ${demaCard}
   `;
 
+  renderIndustryKpis(entries, { curBtcPrice, curUsdRub });
+  renderLocationLeaderboard(allEntries);
+  renderEfficiencyFunnel(entries);
+  renderMonthHeatmap(entries);
+
   // Table
   const historyEl = document.getElementById('historyContent');
   const showLocCol = currentLocationFilter === 'all';
@@ -2318,6 +2590,15 @@ function renderJournal() {
       const elecCellHtml = comissionUsd > 0
         ? `${fmt(e.rubElec)} ₽ <span style="color:var(--text3);font-size:10px;">+ ком. ${fmt(Math.round(comissionUsd * e.usdRub))}₽</span>`
         : `${fmt(e.rubElec)} ₽`;
+      const jth = entryJperTH(e);
+      const realPct = entryRealizationPct(e);
+      const marginPct = entryMiningMarginPct(e);
+      const jthCls = jth === 0 ? 'muted' : (jth < 20 ? 'pos' : jth < 30 ? '' : 'neg');
+      const realCls = realPct === 0 ? 'muted' : (realPct >= 95 ? 'pos' : realPct >= 85 ? '' : 'neg');
+      const marginCls = marginPct >= 0 ? 'pos' : 'neg';
+      const jthCell  = jth > 0 ? `${jth.toFixed(1)}` : '—';
+      const realCell = realPct > 0 ? `${realPct.toFixed(0)}%` : '—';
+      const marginCell = `${marginPct.toFixed(0)}%`;
       rowsHtml += `
         <tr>
           ${locCell}
@@ -2331,7 +2612,10 @@ function renderJournal() {
           <td class="num">${e.usdRub}</td>
           <td class="num">${fmt(Math.round(revRub))} ₽</td>
           <td class="num ${rowFinRub>=0?'pos':'neg'}" title="Фин. итог = продажи + остаток BTC по текущей цене − расходы">${fmt(Math.round(rowFinRub))} ₽</td>
-          <td class="num muted">$${fmtEn(Math.round(costPerBtc))}</td>
+          <td class="num muted" title="All-in $/BTC: все расходы (эл-во + комиссия) на 1 BTC net">$${fmtEn(Math.round(costPerBtc))}</td>
+          <td class="num ${jthCls}" title="J/TH — энергоэффективность фермы. <20 хорошо, 20-30 ок, >30 устарело">${jthCell}</td>
+          <td class="num ${realCls}" title="Realization rate — % реальной добычи от теоретической по формуле. 95%+ — здоровая ферма">${realCell}</td>
+          <td class="num ${marginCls}" title="Mining margin %: (доход_с_HODL − расходы) / доход × 100">${marginCell}</td>
           <td class="actions-cell">
             <button class="row-btn" title="Редактировать" onclick="editEntry(${e.id})">✎</button>
             <button class="row-btn delete" title="Удалить" onclick="deleteEntry(${e.id})">✕</button>
@@ -2345,7 +2629,11 @@ function renderJournal() {
           <thead>
             <tr>
               ${locTh}<th>Месяц</th><th>кВтч</th><th>Эл-во ₽</th><th>Намайнено</th><th>Продано</th><th>Осталось</th>
-              <th>Цена $</th><th>Курс ₽</th><th>Доход ₽</th><th title="Фин. итог = продажи + остаток BTC по текущей цене − расходы">Фин. итог ₽</th><th>Себест/BTC</th><th></th>
+              <th>Цена $</th><th>Курс ₽</th><th>Доход ₽</th><th title="Фин. итог = продажи + остаток BTC по текущей цене − расходы">Фин. итог ₽</th><th>Себест/BTC</th>
+              <th title="J/TH — энергоэффективность">J/TH</th>
+              <th title="Realization rate — реальная добыча vs теоретическая">Реализ.</th>
+              <th title="Mining margin %">Маржа</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
@@ -2613,13 +2901,318 @@ function renderCompareCharts(months, dMap, gMap) {
   });
 }
 
+// ============================================
+// INDUSTRY KPI CARDS (J/TH, Realization, Hashprice бенчмарк, и др.)
+// ============================================
+function renderIndustryKpis(entries, ctx = {}) {
+  const panel = document.getElementById('industryKpisPanel');
+  if (!panel) return;
+  if (!entries || entries.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  const agg = aggregateEntries(entries);
+  if (!agg) { panel.style.display = 'none'; return; }
+  const curBtcPrice = ctx.curBtcPrice || currentBtcPriceUsd();
+  const curUsdRub = ctx.curUsdRub || currentUsdRub();
+
+  // Hashprice бенчмарк (сетевой) при текущей цене и сложности
+  const curDiff = window._liveDifficulty || (entries[entries.length-1].difficulty) || 0;
+  const networkHp = networkHashpriceUsdPerThDay(curBtcPrice, curDiff);
+
+  // Наш hashprice по последней записи (наиболее свежий)
+  const lastE = entries[entries.length - 1];
+  const ourHpLast = entryActualHashpriceUsdPerThDay(lastE);
+
+  // Hashprice tier (по индустриальным бенчмаркам Hashrate Index June'26: $32/PH = $0.032/TH)
+  const breakEvenRub = agg.allInCostPerBtc * curUsdRub;
+
+  // Delta helper: возвращает класс и значок
+  const fmtDelta = (val, bench, fmt) => {
+    if (!isFinite(val) || !isFinite(bench) || bench === 0) return '';
+    const pct = ((val - bench) / Math.abs(bench)) * 100;
+    const cls = pct > 1 ? 'pos' : pct < -1 ? 'neg' : 'flat';
+    const sign = pct > 0 ? '+' : '';
+    return `<span class="kpi-delta ${cls}">${sign}${pct.toFixed(0)}%</span>`;
+  };
+
+  // Эффективность J/TH: <16 = topfleet, 16-25 = current, 25-35 = older, 35+ = legacy
+  const jthCls = agg.avgJperTH === 0 ? 'muted' :
+                 agg.avgJperTH < 18 ? 'pos' :
+                 agg.avgJperTH < 25 ? '' :
+                 agg.avgJperTH < 35 ? 'muted' : 'neg';
+  const jthBench = 16; // S21 Pro класс
+  const realCls = agg.avgRealizationPct === 0 ? 'muted' :
+                  agg.avgRealizationPct >= 95 ? 'pos' :
+                  agg.avgRealizationPct >= 85 ? '' : 'neg';
+  const marginCls = agg.marginPct >= 20 ? 'pos' : agg.marginPct >= 0 ? '' : 'neg';
+
+  // Break-even разрыв vs spot
+  const beGap = curBtcPrice > 0 ? ((curBtcPrice - agg.allInCostPerBtc) / curBtcPrice) * 100 : 0;
+  const beCls = beGap > 30 ? 'pos' : beGap > 0 ? '' : 'neg';
+  // Подсветка карточек: всю карточку красим в зеленый/красный фон
+  const cardBg = (cls) => cls === 'pos' ? 'border:0.5px solid rgba(29,185,122,0.35);background:rgba(29,185,122,0.05);'
+                       : cls === 'neg' ? 'border:0.5px solid rgba(226,84,75,0.35);background:rgba(226,84,75,0.05);'
+                       : '';
+
+  const html = `
+    <div class="metric-card" style="${cardBg(jthCls)}">
+      <div class="metric-label">⚡ Энергоэффект. <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">J/TH (среднее)</span></div>
+      <div class="metric-value ${jthCls === 'pos' ? 'pos' : jthCls === 'neg' ? 'neg' : ''}">${agg.avgJperTH > 0 ? agg.avgJperTH.toFixed(1) : '—'}</div>
+      <div class="kpi-vs"><span class="kpi-bench">бенч S21 Pro: ${jthBench}</span>${agg.avgJperTH > 0 ? fmtDelta(jthBench, agg.avgJperTH) : ''}</div>
+    </div>
+
+    <div class="metric-card" style="${cardBg(realCls)}">
+      <div class="metric-label">🎯 Realization rate <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">факт vs теор.</span></div>
+      <div class="metric-value ${realCls === 'pos' ? 'pos' : realCls === 'neg' ? 'neg' : ''}">${agg.avgRealizationPct > 0 ? agg.avgRealizationPct.toFixed(0)+'%' : '—'}</div>
+      <div class="kpi-vs"><span class="kpi-bench">home: 95-100% · public: 70-90%</span></div>
+    </div>
+
+    <div class="metric-card" style="${cardBg(marginCls)}">
+      <div class="metric-label">💰 Mining margin % <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">(rev_mtm − cost) / rev</span></div>
+      <div class="metric-value ${marginCls === 'pos' ? 'pos' : marginCls === 'neg' ? 'neg' : ''}">${agg.marginPct.toFixed(1)}%</div>
+      <div class="kpi-vs"><span class="kpi-bench">здоровое: 20-50%</span></div>
+    </div>
+
+    <div class="metric-card" style="${cardBg(beCls)}">
+      <div class="metric-label">📉 Break-even BTC <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">$ за BTC</span></div>
+      <div class="metric-value ${beCls === 'pos' ? 'pos' : beCls === 'neg' ? 'neg' : ''}">$${fmtEn(Math.round(agg.allInCostPerBtc))}</div>
+      <div class="kpi-vs"><span class="kpi-bench">spot: $${fmtEn(Math.round(curBtcPrice))}</span><span class="kpi-delta ${beCls === 'pos' ? 'pos' : beCls === 'neg' ? 'neg' : 'flat'}">${beGap >= 0 ? '+' : ''}${beGap.toFixed(0)}%</span></div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">⚡ Hashprice (наш) <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">$/TH/day · посл. месяц</span></div>
+      <div class="metric-value">${ourHpLast > 0 ? '$'+ourHpLast.toFixed(3) : '—'}</div>
+      <div class="kpi-vs"><span class="kpi-bench">сеть: $${networkHp > 0 ? networkHp.toFixed(3) : '—'}</span>${ourHpLast > 0 && networkHp > 0 ? fmtDelta(ourHpLast, networkHp) : ''}</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">🔌 Тариф $/kWh <span style="font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0;">наш реальный</span></div>
+      <div class="metric-value">$${agg.costPerKwhUsd > 0 ? agg.costPerKwhUsd.toFixed(4) : '—'}</div>
+      <div class="kpi-vs"><span class="kpi-bench">PPA target: &lt;$0.06 · hosting: $0.07-0.10</span></div>
+    </div>
+  `;
+  document.getElementById('j_industry_kpis').innerHTML = html;
+}
+
+// ============================================
+// LOCATION LEADERBOARD (Бирск vs Дема)
+// ============================================
+function renderLocationLeaderboard(allEntries) {
+  const panel = document.getElementById('locationLeaderboardPanel');
+  if (!panel) return;
+  const birsk = allEntries.filter(e => (e.location || 'birsk') === 'birsk');
+  const dema  = allEntries.filter(e => (e.location || 'birsk') === 'dema');
+  // Показываем только если есть данные по обеим локациям
+  if (birsk.length === 0 || dema.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  const aB = aggregateEntries(birsk);
+  const aD = aggregateEntries(dema);
+  // Универсальная функция «победитель»: для метрик где меньше — лучше (cost, J/TH) меняем знак
+  const winnerCells = (vB, vD, lowerIsBetter = false) => {
+    if (vB === vD) return ['', ''];
+    const bWin = lowerIsBetter ? vB < vD : vB > vD;
+    return bWin ? ['winner', 'loser'] : ['loser', 'winner'];
+  };
+  const rows = [];
+  const r = (label, valB, valD, fmtFn, lowerBetter = false) => {
+    const [clsB, clsD] = winnerCells(valB, valD, lowerBetter);
+    rows.push(`<tr><td>${label}</td><td class="${clsB}">${fmtFn(valB)}</td><td class="${clsD}">${fmtFn(valD)}</td></tr>`);
+  };
+  r('Записей', aB.count, aD.count, v => v);
+  r('Намайнено net', aB.btcMinedNet, aD.btcMinedNet, v => v.toFixed(5)+' BTC');
+  r('Отдано партнёру', aB.btcGiven, aD.btcGiven, v => v.toFixed(5)+' BTC', true);
+  r('Расходы всего', aB.totalCostRub, aD.totalCostRub, v => fmt(Math.round(v))+' ₽', true);
+  r('Фин. итог (mtm)', aB.finResultRub, aD.finResultRub, v => fmt(Math.round(v))+' ₽');
+  r('All-in $/BTC', aB.allInCostPerBtc, aD.allInCostPerBtc, v => '$'+fmtEn(Math.round(v)), true);
+  r('Mining margin %', aB.marginPct, aD.marginPct, v => v.toFixed(1)+'%');
+  r('Realization %', aB.avgRealizationPct, aD.avgRealizationPct, v => v > 0 ? v.toFixed(0)+'%' : '—');
+  r('J/TH (среднее)', aB.avgJperTH, aD.avgJperTH, v => v > 0 ? v.toFixed(1) : '—', true);
+  r('Hashrate сред.', aB.avgHashrate, aD.avgHashrate, v => v > 0 ? v.toFixed(1)+' TH/s' : '—');
+  r('Тариф $/kWh', aB.costPerKwhUsd, aD.costPerKwhUsd, v => v > 0 ? '$'+v.toFixed(4) : '—', true);
+
+  // Вердикт
+  let birskScore = 0, demaScore = 0;
+  if (aB.finResultRub > aD.finResultRub) birskScore++; else if (aD.finResultRub > aB.finResultRub) demaScore++;
+  if (aB.marginPct > aD.marginPct) birskScore++; else if (aD.marginPct > aB.marginPct) demaScore++;
+  if (aB.allInCostPerBtc < aD.allInCostPerBtc) birskScore++; else if (aD.allInCostPerBtc < aB.allInCostPerBtc) demaScore++;
+  const verdict = birskScore > demaScore
+    ? `<strong style="color:#6ba8f0">🏆 Бирск выигрывает</strong> по ${birskScore}/3 ключевым метрикам (фин. итог, маржа, $/BTC).`
+    : demaScore > birskScore
+    ? `<strong style="color:#f7931a">🏆 Дема выигрывает</strong> по ${demaScore}/3 ключевым метрикам.`
+    : `<strong>Локации идут вровень.</strong>`;
+
+  document.getElementById('j_location_leaderboard').innerHTML = `
+    <div class="leaderboard-wrap">
+      <table class="leaderboard">
+        <thead>
+          <tr>
+            <th>Метрика</th>
+            <th><span class="loc-pill loc-birsk">🔵 Бирск</span></th>
+            <th><span class="loc-pill loc-dema">🟠 Дема</span></th>
+          </tr>
+        </thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>
+    </div>
+    <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg3); border-radius: var(--radius); font-size: 13px; color: var(--text2); line-height: 1.5;">${verdict}</div>
+  `;
+}
+
+// ============================================
+// EFFICIENCY FUNNEL (Теор. BTC → Факт → Net → Продано/HODL)
+// ============================================
+function renderEfficiencyFunnel(entries) {
+  const panel = document.getElementById('efficiencyFunnelPanel');
+  if (!panel) return;
+  if (!entries || entries.length === 0) { panel.style.display = 'none'; return; }
+  let theor = 0, actual = 0, net = 0, sold = 0, kept = 0;
+  for (const e of entries) {
+    theor += entryTheoreticalBtc(e);
+    actual += e.btcMined || 0;
+    net += entryNetBtcMined(e);
+    sold += e.btcSold || 0;
+    kept += Math.max(0, entryNetBtcMined(e) - (e.btcSold || 0));
+  }
+  if (theor === 0) {
+    // Нет difficulty в записях — теор. посчитать нельзя.
+    panel.style.display = 'block';
+    document.getElementById('j_efficiency_funnel').innerHTML = `
+      <div style="padding: 14px 18px; background: var(--bg3); border-radius: var(--radius); font-size: 13px; color: var(--text2);">
+        💡 Для воронки нужна сложность сети (поле «Difficulty» в записях). Сейчас пока нет — добавь, и появится визуализация «где теряется добыча».
+      </div>`;
+    return;
+  }
+  panel.style.display = 'block';
+  const maxV = Math.max(theor, actual, net, sold, kept, 0.0001);
+  const rows = [
+    { label: 'Теоретически', val: theor, color: '#4a90e2', loss: 0 },
+    { label: 'Фактически добыто', val: actual, color: '#f7931a', loss: theor - actual },
+    { label: 'Net после комиссии', val: net, color: '#b46de5', loss: actual - net },
+    { label: 'Продано', val: sold, color: '#1db97a', loss: 0 },
+    { label: 'HODL остаток', val: kept, color: '#e2544b', loss: 0 },
+  ];
+  const html = `<div class="funnel">${rows.map(r => {
+    const widthPct = (r.val / maxV) * 100;
+    const lossStr = r.loss > 0.0001 ? `<span class="funnel-loss">−${r.loss.toFixed(5)}</span>` : '';
+    return `<div class="funnel-row">
+      <div class="funnel-label">${r.label}</div>
+      <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${Math.max(widthPct, 5)}%;background:${r.color};">${r.val.toFixed(4)} BTC</div></div>
+      <div class="funnel-value">${((r.val / theor) * 100).toFixed(1)}%${lossStr}</div>
+    </div>`;
+  }).join('')}</div>
+  <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg3); border-radius: var(--radius); font-size: 12px; color: var(--text2); line-height: 1.5;">
+    🔬 Теоретическая добыча = hashrate × дни × 3.125 / (difficulty × 2³²). Разница «теор. − факт» = потери от downtime, hardware errors, pool fees. Разница «факт − net» = комиссия партнёру (Дема).
+  </div>`;
+  document.getElementById('j_efficiency_funnel').innerHTML = html;
+}
+
+// ============================================
+// MONTH HEATMAP — цветовая карта эффективности
+// ============================================
+function renderMonthHeatmap(entries) {
+  const panel = document.getElementById('heatmapPanel');
+  if (!panel) return;
+  if (!entries || entries.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const monthCounts = entries.reduce((a, e) => { a[e.month] = (a[e.month] || 0) + 1; return a; }, {});
+  const showLoc = currentLocationFilter === 'all';
+
+  // Считаем массивы значений для нормализации цветов
+  const data = entries.map(e => {
+    const margin = entryMiningMarginPct(e);
+    const real = entryRealizationPct(e);
+    const jth = entryJperTH(e);
+    const hp = entryActualHashpriceUsdPerThDay(e);
+    const fin = entryFinResultRub(e);
+    return { e, margin, real, jth, hp, fin };
+  });
+
+  // Цветовая функция: зелёный (хорошо) → красный (плохо)
+  const colorFor = (val, min, max, lowerIsBetter = false) => {
+    if (!isFinite(val) || min === max) return '#3a3a3a';
+    let pct = (val - min) / (max - min); // 0..1
+    if (lowerIsBetter) pct = 1 - pct;
+    pct = Math.max(0, Math.min(1, pct));
+    // 0 → red (220,80,75), 0.5 → yellow (200,160,40), 1 → green (40,180,110)
+    if (pct < 0.5) {
+      const t = pct * 2; // 0..1
+      const r = Math.round(220 + (200 - 220) * t);
+      const g = Math.round(80 + (160 - 80) * t);
+      const b = Math.round(75 + (40 - 75) * t);
+      return `rgb(${r},${g},${b})`;
+    } else {
+      const t = (pct - 0.5) * 2;
+      const r = Math.round(200 + (40 - 200) * t);
+      const g = Math.round(160 + (180 - 160) * t);
+      const b = Math.round(40 + (110 - 40) * t);
+      return `rgb(${r},${g},${b})`;
+    }
+  };
+  const arrMin = (arr) => arr.filter(v => isFinite(v) && v !== 0).reduce((a,b)=>Math.min(a,b), Infinity);
+  const arrMax = (arr) => arr.filter(v => isFinite(v) && v !== 0).reduce((a,b)=>Math.max(a,b), -Infinity);
+
+  const marginVals = data.map(d => d.margin);
+  const realVals = data.map(d => d.real);
+  const jthVals = data.map(d => d.jth);
+  const hpVals = data.map(d => d.hp);
+  const finVals = data.map(d => d.fin);
+
+  const cells = data.map(d => {
+    const e = d.e;
+    const label = monthCounts[e.month] > 1
+      ? `${e.month} ${LOC_META[e.location || 'birsk'].short}`
+      : e.month;
+    const locPill = showLoc ? `<span class="loc-pill loc-${e.location || 'birsk'}" style="margin-left:6px;">${LOC_META[e.location || 'birsk'].short}</span>` : '';
+    return `<tr>
+      <td class="heat-month">${e.month}${locPill}</td>
+      <td class="heat-cell" style="background:${colorFor(d.fin, arrMin(finVals), arrMax(finVals))}">${fmt(Math.round(d.fin/1000))}k</td>
+      <td class="heat-cell" style="background:${colorFor(d.margin, arrMin(marginVals), arrMax(marginVals))}">${d.margin.toFixed(0)}%</td>
+      <td class="heat-cell" style="background:${d.real > 0 ? colorFor(d.real, arrMin(realVals), arrMax(realVals)) : '#3a3a3a'}">${d.real > 0 ? d.real.toFixed(0)+'%' : '—'}</td>
+      <td class="heat-cell" style="background:${d.jth > 0 ? colorFor(d.jth, arrMin(jthVals), arrMax(jthVals), true) : '#3a3a3a'}">${d.jth > 0 ? d.jth.toFixed(1) : '—'}</td>
+      <td class="heat-cell" style="background:${d.hp > 0 ? colorFor(d.hp, arrMin(hpVals), arrMax(hpVals)) : '#3a3a3a'}">${d.hp > 0 ? '$'+d.hp.toFixed(3) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('j_month_heatmap').innerHTML = `
+    <div class="heatmap-wrap">
+      <table class="heatmap">
+        <thead>
+          <tr>
+            <th>Месяц</th>
+            <th title="Фин. итог в тыс. ₽ (mark-to-market)">Фин. итог</th>
+            <th title="Mining margin %">Маржа</th>
+            <th title="Realization rate %">Реализ.</th>
+            <th title="J/TH (ниже = лучше)">J/TH</th>
+            <th title="Наш hashprice $/TH/day">Hashprice</th>
+          </tr>
+        </thead>
+        <tbody>${cells}</tbody>
+      </table>
+    </div>
+    <div class="heatmap-legend">
+      <span>хуже</span>
+      <div class="heatmap-legend-scale">
+        <div style="background:rgb(220,80,75)"></div>
+        <div style="background:rgb(210,120,55)"></div>
+        <div style="background:rgb(200,160,40)"></div>
+        <div style="background:rgb(120,170,75)"></div>
+        <div style="background:rgb(40,180,110)"></div>
+      </div>
+      <span>лучше</span>
+      <span style="margin-left:12px;color:var(--text3);">(J/TH — наоборот: меньше = лучше)</span>
+    </div>
+  `;
+}
+
 function renderJournalCharts(entries) {
-  ['chartPanel1','chartPanel2','chartPanel3'].forEach(id => {
-    document.getElementById(id).style.display = entries.length === 0 ? 'none' : 'block';
+  ['chartPanel1','chartPanel2','chartPanel3','chartPanelHashprice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = entries.length === 0 ? 'none' : 'block';
   });
   if (entries.length === 0) {
-    [jChart1, jChart2, jChart3].forEach(c => { if (c) c.destroy(); });
-    jChart1 = jChart2 = jChart3 = null;
+    [jChart1, jChart2, jChart3, jChartHashprice].forEach(c => { if (c) c.destroy(); });
+    jChart1 = jChart2 = jChart3 = jChartHashprice = null;
     return;
   }
 
@@ -2691,6 +3284,26 @@ function renderJournalCharts(entries) {
     ]},
     options: chartOpts(v => '$'+fmtEn(v), ctx => 'Себест: $'+fmtEn(ctx.parsed.y))
   });
+
+  // Hashprice chart: наш факт vs сетевой ($/TH/day)
+  const ourHp = entries.map(e => +entryActualHashpriceUsdPerThDay(e).toFixed(3));
+  const netHp = entries.map(e => {
+    const px = e.salePrice > 0 ? e.salePrice : (window._liveBtcPrice || 0);
+    const diff = e.difficulty || window._liveDifficulty || 0;
+    return +networkHashpriceUsdPerThDay(px, diff).toFixed(3);
+  });
+  if (jChartHashprice) jChartHashprice.destroy();
+  const hpCanvas = document.getElementById('j_chartHashprice');
+  if (hpCanvas) {
+    jChartHashprice = new Chart(hpCanvas, {
+      type: 'line',
+      data: { labels, datasets: [
+        { label:'Наш факт', data:ourHp, borderColor:'#f7931a', backgroundColor:'rgba(247,147,26,0.1)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#f7931a', tension:0.3, fill:false },
+        { label:'Сеть', data:netHp, borderColor:'#4a90e2', backgroundColor:'rgba(74,144,226,0.1)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#4a90e2', tension:0.3, fill:false, borderDash:[4,4] },
+      ]},
+      options: chartOpts(v => '$'+v.toFixed(3), ctx => ctx.dataset.label+': $'+ctx.parsed.y.toFixed(3)+'/TH/day')
+    });
+  }
 }
 
 // ============================================
