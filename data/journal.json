@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-15T10:30:00.000Z",
-  "updatedBy": "csv-restore",
+  "updatedAt": "2026-06-15T10:41:06.969Z",
   "journals": {
     "D": [],
     "G": [
@@ -63,5 +62,7 @@
       }
     ]
   },
-  "diffCache": {}
+  "diffCache": {
+    "2026-05": 136.60707085477506
+  }
 }
