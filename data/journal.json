@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-15T11:17:56.321Z",
+  "updatedAt": "2026-06-15T11:18:53.241Z",
   "journals": {
     "D": [
       {
@@ -18,7 +18,7 @@
         "usdRub": 75
       },
       {
-        "id": 1781521943693,
+        "id": 1781522329427,
         "month": "2026-05",
         "location": "dema",
         "btcGiven": 0,
