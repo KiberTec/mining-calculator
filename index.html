@@ -548,15 +548,13 @@
     align-items: center;
   }
   .actions-bar .spacer { flex: 1; min-width: 0; }
-  .actions-bar > button,
-  .actions-bar > #ghSyncBtn {
+  .actions-bar > button {
     flex: 0 0 auto;
   }
   @media (max-width: 640px) {
     .actions-bar { gap: 6px; }
     .actions-bar .spacer { display: none; }
-    .actions-bar > button,
-    .actions-bar > #ghSyncBtn {
+    .actions-bar > button {
       padding: 8px 11px;
       font-size: 12px;
       flex: 1 1 calc(50% - 6px);
@@ -789,123 +787,6 @@
   }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-  /* ===== GitHub Sync indicator + modal ===== */
-  #ghSyncBtn {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 500;
-    background: var(--bg3);
-    color: var(--text2);
-    border: 0.5px solid var(--border2);
-    border-radius: 8px;
-    padding: 7px 12px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background .15s, color .15s, border-color .15s;
-  }
-  #ghSyncBtn:hover { background: var(--bg4); color: var(--text); }
-  #ghSyncBtn .gh-dot { font-size: 10px; line-height: 1; }
-  #ghSyncBtn .gh-dot.gh-syncing { animation: pulse 1.2s infinite; }
-  #ghSyncBtn .gh-dot.gh-ok { filter: drop-shadow(0 0 3px rgba(29,185,122,0.5)); }
-  #ghSyncBtn .gh-dot.gh-err { filter: drop-shadow(0 0 3px rgba(226,84,75,0.5)); }
-
-  .gh-modal {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.55);
-    z-index: 1000;
-    align-items: flex-start; justify-content: center;
-    padding: 60px 16px 16px;
-    overflow-y: auto;
-  }
-  .gh-modal.open { display: flex; }
-  .gh-modal-inner {
-    background: var(--bg2);
-    border: 0.5px solid var(--border2);
-    border-radius: var(--radius-lg);
-    width: 100%; max-width: 560px;
-    padding: 22px 26px 24px;
-    color: var(--text);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .gh-modal-header {
-    display: flex; align-items: center;
-    margin-bottom: 14px;
-  }
-  .gh-modal-header h3 {
-    font-size: 15px; font-weight: 600; flex: 1;
-    letter-spacing: -0.2px;
-  }
-  .gh-modal-close {
-    background: transparent; border: none; color: var(--text2);
-    font-size: 18px; cursor: pointer; padding: 2px 8px;
-    border-radius: 6px;
-  }
-  .gh-modal-close:hover { background: var(--bg3); color: var(--text); }
-  .gh-section { margin-bottom: 18px; }
-  .gh-section-title {
-    font-size: 11px; font-weight: 600;
-    letter-spacing: .08em; text-transform: uppercase;
-    color: var(--text3);
-    margin-bottom: 8px;
-  }
-  .gh-status-box {
-    background: var(--bg3);
-    border-radius: var(--radius);
-    padding: 12px 14px;
-    font-size: 12.5px;
-    line-height: 1.7;
-    color: var(--text2);
-  }
-  .gh-status-box code {
-    background: var(--bg4);
-    color: var(--text);
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-size: 11.5px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-  .gh-status-box strong { color: var(--text); font-weight: 600; }
-  .gh-token-row {
-    display: flex; gap: 8px;
-  }
-  .gh-token-row input {
-    flex: 1;
-    background: var(--bg3);
-    border: 0.5px solid var(--border);
-    border-radius: 8px;
-    padding: 9px 12px;
-    color: var(--text);
-    font-size: 13px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    outline: none;
-    transition: border-color .15s;
-  }
-  .gh-token-row input:focus { border-color: var(--accent); }
-  .gh-help {
-    font-size: 11.5px; color: var(--text3);
-    margin-top: 6px;
-    line-height: 1.55;
-  }
-  .gh-help a { color: var(--blue); text-decoration: none; }
-  .gh-help a:hover { text-decoration: underline; }
-  .gh-help ol { margin: 4px 0 4px 16px; }
-  .gh-help li { margin-bottom: 2px; }
-  .gh-modal-actions {
-    display: flex; gap: 10px;
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 0.5px solid var(--border);
-    flex-wrap: wrap;
-  }
-  .gh-toggle-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px;
-    background: var(--bg3);
-    border-radius: var(--radius);
-    font-size: 13px; color: var(--text2);
-  }
-  .gh-toggle-row input { accent-color: var(--accent); cursor: pointer; }
-
   .gh-password-input {
     width: 100%;
     background: var(--bg3);
@@ -922,7 +803,6 @@
   .gh-password-input:focus { border-color: var(--accent); }
   #passwordConfirmRow { margin-top: 12px; }
 
-  #ghSyncBtn .gh-dot.gh-locked { filter: drop-shadow(0 0 3px rgba(232,168,50,0.6)); }
 </style>
 </head>
 <body>
@@ -1002,7 +882,7 @@
       <div class="panel">
         <div class="panel-title">Параметры оплаты</div>
         <div class="slider-row">
-          <span class="slider-label">Потребление, кВтч/мес</span>
+          <span class="slider-label">Потребление за месяц, кВт·ч</span>
           <input type="range" id="s_elec_kwh" min="20000" max="500000" step="1000" value="86000">
           <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="s_elec_kwh_input" value="86000" step="any"><span class="slider-val-unit">кВтч</span></span>
         </div>
@@ -1054,7 +934,7 @@
       <div class="panel">
         <div class="panel-title">Параметры оплаты</div>
         <div class="slider-row">
-          <span class="slider-label">Потребление, кВтч/мес</span>
+          <span class="slider-label">Потребление за месяц, кВт·ч</span>
           <input type="range" id="c_elec_kwh" min="20000" max="500000" step="1000" value="86000">
           <span class="slider-val-wrap"><input type="number" class="slider-val-input" id="c_elec_kwh_input" value="86000" step="any"><span class="slider-val-unit">кВтч</span></span>
         </div>
@@ -1136,7 +1016,7 @@
       <button class="btn" id="exportJsonBtn" title="Полный бэкап обоих журналов в JSON">📦 Бэкап JSON</button>
       <button class="btn" id="importJsonBtn" title="Загрузить бэкап от партнёра">📥 Восстановить</button>
       <input type="file" id="importJsonFile" accept=".json,application/json" style="display:none;">
-      <button class="btn" id="ghSyncBtn" title="Синхронизация с GitHub"><span class="gh-dot">⚫</span> Sync</button>
+      <span id="ghSyncDot" style="font-size:10px;cursor:default;opacity:0.8;align-self:center;" title="Sync">⚫</span>
       <div class="spacer"></div>
       <button class="btn" id="journalLockBtn" title="Заблокировать журнал на этом устройстве">🔒 Закрыть</button>
       <button class="btn danger" id="clearAllBtn">Очистить всё</button>
@@ -1195,7 +1075,7 @@
           </div>
         </div>
         <div class="field">
-          <label>Потребление, кВтч</label>
+          <label>Потребление за месяц, кВт·ч</label>
           <input type="number" id="f_kwh" placeholder="86000" min="0" step="100">
         </div>
         <div class="field">
@@ -1350,56 +1230,8 @@
 
 </div>
 
-<!-- ===== GitHub Sync modal ===== -->
-<div class="gh-modal" id="ghSyncModal">
-  <div class="gh-modal-inner">
-    <div class="gh-modal-header">
-      <h3>☁️ GitHub Sync</h3>
-      <button class="gh-modal-close" id="ghSyncModalClose">✕</button>
-    </div>
-
-    <div class="gh-section">
-      <div class="gh-section-title">Состояние</div>
-      <div class="gh-status-box" id="ghSyncModalStatus">—</div>
-    </div>
-
-    <div class="gh-section">
-      <div class="gh-section-title">Personal Access Token (PAT) — нужен один раз</div>
-      <div class="gh-token-row">
-        <input type="password" id="ghTokenInput" placeholder="github_pat_... или ghp_...">
-        <button class="btn small" id="ghClearToken">Удалить</button>
-      </div>
-      <div class="gh-help">
-        <div style="padding:10px 12px;background:rgba(29,185,122,0.06);border:0.5px solid rgba(29,185,122,0.2);border-radius:8px;margin-bottom:10px;color:var(--text);font-size:12px;line-height:1.55;">
-          ✨ <strong>Один раз настроил — работает везде.</strong> После того как ты вставишь PAT здесь, он автоматически зашифруется паролем входа и сохранится в репо.
-          На <strong>телефоне</strong> и у <strong>партнёра</strong> ничего настраивать не надо — открыли сайт, ввели пароль → PAT подтянется сам, и можно сразу добавлять записи.
-        </div>
-        Как получить токен:
-        <ol>
-          <li>Открой <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens (Fine-grained)</a></li>
-          <li>«Generate new token» → имя любое, expiration хоть No expiration</li>
-          <li>Repository access → <strong>Only select repositories</strong> → <code>KiberTec/mining-calculator</code></li>
-          <li>Permissions → Repository permissions → <strong>Contents: Read and write</strong></li>
-          <li>«Generate» → скопируй токен (<code>github_pat_...</code>) → вставь сюда → Сохранить</li>
-        </ol>
-        Токен живёт в твоём браузере (<code>localStorage</code>) и в зашифрованном виде в репо (<code>data/auth.json</code>). Расшифровать его можно только зная пароль входа.
-      </div>
-    </div>
-
-    <div class="gh-section">
-      <div class="gh-toggle-row">
-        <input type="checkbox" id="ghSyncDisableToggle">
-        <label for="ghSyncDisableToggle">Отключить sync на этом устройстве (работать только локально)</label>
-      </div>
-    </div>
-
-    <div class="gh-modal-actions">
-      <button class="btn primary" id="ghSyncSave">Сохранить</button>
-      <button class="btn" id="ghSyncForce">Синхронизировать сейчас</button>
-      <button class="btn ghost" id="ghSyncModalClose">Закрыть</button>
-    </div>
-  </div>
-</div>
+<!-- Sync status indicator (invisible, auto-sync) -->
+<div id="syncStatusToast" style="display:none;position:fixed;bottom:12px;right:12px;padding:8px 14px;border-radius:10px;font-size:12px;color:#fff;z-index:9999;pointer-events:none;transition:opacity 0.3s;"></div>
 
 <script>
 // ============================================
@@ -4076,17 +3908,22 @@ async function tryUnlockJournal(password) {
   if (h === JOURNAL_PASSWORD_HASH) {
     setJournalUnlocked(true);
     updateJournalLockUI();
-    // Если на этом устройстве нет PAT — пробуем подтянуть shared PAT из репо,
-    // чтобы партнёр/телефон могли писать без отдельной настройки токена.
-    if (typeof fetchSharedPat === 'function' && typeof ghGetToken === 'function' && !ghGetToken()) {
-      fetchSharedPat().then(pat => {
-        if (pat && typeof ghSetToken === 'function') {
-          ghSetToken(pat);
-          if (typeof scheduleGhSync === 'function') scheduleGhSync();
-          if (typeof renderSyncIndicator === 'function') renderSyncIndicator();
+    // Автоматически подтягиваем PAT и запускаем sync — никаких настроек не нужно
+    (async () => {
+      try {
+        if (typeof fetchSharedPat === 'function' && typeof ghGetToken === 'function' && !ghGetToken()) {
+          const pat = await fetchSharedPat();
+          if (pat && typeof ghSetToken === 'function') {
+            ghSetToken(pat);
+          }
         }
-      });
-    }
+        if (typeof ghSyncNow === 'function') await ghSyncNow({ force: true });
+        if (typeof renderSyncIndicator === 'function') renderSyncIndicator();
+        if (typeof showSyncToast === 'function') showSyncToast('Данные синхронизированы', true);
+      } catch(e) {
+        if (typeof showSyncToast === 'function') showSyncToast('Ошибка sync: ' + e.message, false);
+      }
+    })();
     return true;
   }
   return false;
@@ -4162,7 +3999,7 @@ const GH_DISABLED_KEY = 'mining_gh_disabled_v1'; // если юзер явно �
 
 const GH_API = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
 
-let _ghSyncState = { status: 'idle', error: null, inFlight: false, retryAt: 0 };
+let _ghSyncState = { status: 'idle', error: null, inFlight: false, retryAt: 0, needsUpload: false, remoteCount: null };
 let _ghSyncTimer = null;
 
 // ---- utils ----
@@ -4175,12 +4012,7 @@ function ghSetToken(t) {
     else localStorage.removeItem(GH_TOKEN_KEY);
   } catch(e) {}
 }
-function ghIsDisabled() {
-  try { return localStorage.getItem(GH_DISABLED_KEY) === '1'; } catch(e) { return false; }
-}
-function ghSetDisabled(v) {
-  try { localStorage.setItem(GH_DISABLED_KEY, v ? '1' : '0'); } catch(e) {}
-}
+function ghIsDisabled() { return false; }
 function utf8ToB64(s) { return btoa(unescape(encodeURIComponent(s))); }
 function b64ToUtf8(s) { return decodeURIComponent(escape(atob(String(s || '').replace(/\s/g, '')))); }
 
@@ -4443,6 +4275,7 @@ async function ghSyncNow(opts = {}) {
 
     if (!payloadEqual(merged, remote)) {
       if (!ghGetToken()) {
+        _ghSyncState.needsUpload = true;
         setGhStatus('readonly');
         _ghSyncState.inFlight = false;
         return;
@@ -4461,6 +4294,11 @@ async function ghSyncNow(opts = {}) {
       }
     }
 
+    _ghSyncState.needsUpload = false;
+    const remoteCount = remote && remote.journals
+      ? (remote.journals.D || []).length + (remote.journals.G || []).length
+      : 0;
+    _ghSyncState.remoteCount = remoteCount;
     setGhStatus(ghGetToken() ? 'ok' : 'readonly');
     // Если у нас есть PAT и sync прошёл успешно — асинхронно убеждаемся
     // что в репо лежит актуальный shared PAT (чтобы партнёр/телефон могли писать).
@@ -4493,132 +4331,50 @@ function fmtTimeAgo(ts) {
   return Math.floor(sec/86400) + ' дн назад';
 }
 
+// Маленькая точка-индикатор и тост (без модалок и кнопок)
 function renderSyncIndicator() {
-  const btn = document.getElementById('ghSyncBtn');
-  if (!btn) return;
-  const hasToken = !!ghGetToken();
-  const disabled = ghIsDisabled();
-  const isNarrow = window.innerWidth <= 640;
-  let dot = '⚫', text = '', textShort = '', cls = '';
-  if (disabled)                                   { dot = '⚫'; text = 'Sync выкл.';       textShort = 'Sync'; cls = 'gh-off'; }
-  else if (_ghSyncState.status === 'syncing')     { dot = '🟡'; text = 'Синхронизация…';  textShort = 'Sync…'; cls = 'gh-syncing'; }
-  else if (_ghSyncState.status === 'ok')          { dot = '🟢'; text = 'Синхронизировано'; textShort = 'Sync'; cls = 'gh-ok'; }
-  else if (_ghSyncState.status === 'readonly')    { dot = '🔵'; text = 'Только чтение';    textShort = 'Read'; cls = 'gh-ro'; }
-  else if (_ghSyncState.status === 'error')       { dot = '🔴'; text = 'Ошибка sync';      textShort = 'Err';  cls = 'gh-err'; }
-  else if (!hasToken)                             { dot = '⚫'; text = 'Sync не настроен'; textShort = 'Sync'; cls = 'gh-off'; }
-  btn.innerHTML = '<span class="gh-dot ' + cls + '">' + dot + '</span> ' + (isNarrow ? textShort : text);
-  btn.title = _ghSyncState.error ? ('Ошибка: ' + _ghSyncState.error) : text;
-}
-window.addEventListener('resize', () => {
-  if (typeof renderSyncIndicator === 'function') renderSyncIndicator();
-});
-
-function openSyncModal() {
-  const modal = document.getElementById('ghSyncModal');
-  if (!modal) return;
-  modal.classList.add('open');
-  const tokenInput = document.getElementById('ghTokenInput');
-  const hasToken = !!ghGetToken();
-  tokenInput.value = hasToken ? '••••••••••••••••' : '';
-  tokenInput.dataset.dirty = '';
-  document.getElementById('ghSyncDisableToggle').checked = ghIsDisabled();
-  updateModalStatus();
-}
-function closeSyncModal() {
-  const modal = document.getElementById('ghSyncModal');
-  if (modal) modal.classList.remove('open');
-}
-function updateModalStatus() {
-  const lastSync = +(localStorage.getItem(GH_LASTSYNC_KEY) || 0);
-  const stat = document.getElementById('ghSyncModalStatus');
-  if (!stat) return;
-  let html = '<div><strong>Репозиторий:</strong> <code>' + GH_CONFIG.owner + '/' + GH_CONFIG.repo + '</code></div>';
-  html += '<div><strong>Файл:</strong> <code>' + GH_CONFIG.file + '</code></div>';
-  html += '<div><strong>Состояние:</strong> ';
-  if (ghIsDisabled()) html += '<span style="color:var(--text2);">отключено</span>';
-  else if (_ghSyncState.status === 'ok') html += '<span style="color:var(--green);">синхронизировано (запись доступна)</span>';
-  else if (_ghSyncState.status === 'readonly') html += '<span style="color:var(--blue);">только чтение (PAT не настроен)</span>';
-  else if (_ghSyncState.status === 'syncing') html += '<span style="color:var(--amber);">синхронизация…</span>';
-  else if (_ghSyncState.status === 'error') html += '<span style="color:var(--red);">ошибка: ' + (_ghSyncState.error || '') + '</span>';
-  else html += '<span style="color:var(--text2);">ожидание</span>';
-  html += '</div>';
-  html += '<div><strong>Последняя синхронизация:</strong> ' + fmtTimeAgo(lastSync) + '</div>';
-
-  // Если PAT не настроен, но локально есть данные — заметная подсказка
-  if (_ghSyncState.status === 'readonly' && !ghGetToken()) {
-    const localCount = (loadEntries('D').length + loadEntries('G').length);
-    if (localCount > 0) {
-      html += `
-        <div style="margin-top:12px;padding:10px 12px;background:rgba(232,168,50,0.08);border:0.5px solid rgba(232,168,50,0.25);border-radius:8px;font-size:12px;color:var(--text);line-height:1.5;">
-          ⚠ <strong>${localCount}</strong> ${localCount === 1 ? 'запись' : 'записей'} лежит только в этом браузере.
-          На GitHub и на других устройствах они не появятся, пока ты не введёшь <strong>PAT</strong> ниже.
-        </div>`;
-    }
-  }
-  stat.innerHTML = html;
+  const dot = document.getElementById('ghSyncDot');
+  if (!dot) return;
+  const s = _ghSyncState.status;
+  if (s === 'syncing')  { dot.textContent = '🟡'; dot.title = 'Синхронизация…'; }
+  else if (s === 'ok')  { dot.textContent = '🟢'; dot.title = 'Данные синхронизированы'; }
+  else if (s === 'error') { dot.textContent = '🔴'; dot.title = 'Ошибка sync: ' + (_ghSyncState.error || ''); }
+  else                    { dot.textContent = '⚫'; dot.title = 'Sync'; }
 }
 
-// События модалки
-document.addEventListener('click', (e) => {
-  if (e.target && e.target.id === 'ghSyncBtn') {
-    openSyncModal();
-  } else if (e.target && e.target.id === 'ghSyncModalClose') {
-    closeSyncModal();
-  } else if (e.target && e.target.id === 'ghSyncSave') {
-    const tokenInput = document.getElementById('ghTokenInput');
-    if (tokenInput.dataset.dirty === '1') {
-      const v = tokenInput.value.trim();
-      if (v && v !== '••••••••••••••••') ghSetToken(v);
-      else if (!v) ghSetToken('');
-    }
-    ghSetDisabled(document.getElementById('ghSyncDisableToggle').checked);
-    updateModalStatus();
-    renderSyncIndicator();
-    ghSyncNow({ force: true });
-  } else if (e.target && e.target.id === 'ghSyncForce') {
-    ghSyncNow({ force: true }).then(updateModalStatus);
-  } else if (e.target && e.target.id === 'ghClearToken') {
-    if (confirm('Удалить PAT из этого браузера? Запись в GitHub станет недоступна (чтение продолжит работать).')) {
-      ghSetToken('');
-      document.getElementById('ghTokenInput').value = '';
-      renderSyncIndicator();
-      updateModalStatus();
-    }
-  } else if (e.target && e.target.id === 'ghSyncModal') {
-    if (e.target === document.getElementById('ghSyncModal')) closeSyncModal();
-  }
-});
+function showSyncToast(msg, ok) {
+  const el = document.getElementById('syncStatusToast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.background = ok ? 'rgba(29,185,122,0.9)' : 'rgba(226,84,75,0.9)';
+  el.style.display = 'block';
+  el.style.opacity = '1';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 400); }, 2500);
+}
 
-document.addEventListener('input', (e) => {
-  if (e.target && e.target.id === 'ghTokenInput') {
-    e.target.dataset.dirty = '1';
-  }
-});
-
-// При старте: первая загрузка из GitHub (даже без PAT)
+// При старте: автоматическая загрузка PAT и sync
 (async function ghInit() {
-  if (ghIsDisabled()) {
-    renderSyncIndicator();
-    return;
-  }
-  // Если журнал уже разлочен (нажали Разблокировать раньше) и PAT нет —
-  // попробуем подтянуть shared PAT из репо. Это даёт мгновенный write-доступ
-  // на этом устройстве (например, после открытия сайта на телефоне).
+  renderSyncIndicator();
+
+  // Если журнал разлочен и PAT нет — автоматически тянем shared PAT
   if (isJournalUnlocked() && !ghGetToken()) {
-    fetchSharedPat().then(pat => {
+    try {
+      const pat = await fetchSharedPat();
       if (pat) {
         ghSetToken(pat);
         renderSyncIndicator();
-        scheduleGhSync();
       }
-    });
+    } catch(e) { /* ок, попробуем позже */ }
   }
+
+  // Первая синхронизация
   setTimeout(() => ghSyncNow({ force: true }), 500);
+
+  // Периодический sync каждые 30 сек
   setInterval(() => {
     renderSyncIndicator();
-    if (document.getElementById('ghSyncModal') && document.getElementById('ghSyncModal').classList.contains('open')) {
-      updateModalStatus();
-    }
+    ghSyncNow();
   }, 30000);
 })();
 
