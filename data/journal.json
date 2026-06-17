@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-15T11:18:53.241Z",
+  "updatedAt": "2026-06-17T11:01:54.826Z",
   "journals": {
     "D": [
       {
@@ -34,10 +34,8 @@
     ],
     "G": [
       {
-        "id": 1743638400000,
+        "id": 1781271029463,
         "month": "2026-04",
-        "location": "birsk",
-        "btcGiven": 0,
         "kwh": 263325,
         "rubElec": 1316625,
         "hashrate": 20100,
@@ -45,10 +43,12 @@
         "btcMined": 0.2741,
         "btcSold": 0.15,
         "salePrice": 69000,
-        "usdRub": 78
+        "usdRub": 78,
+        "location": "birsk",
+        "btcGiven": 0
       },
       {
-        "id": 1743638400001,
+        "id": 1781356353924,
         "month": "2026-04",
         "location": "dema",
         "btcGiven": 0,
@@ -62,10 +62,8 @@
         "usdRub": 79
       },
       {
-        "id": 1746230400000,
+        "id": 1781270151228,
         "month": "2026-05",
-        "location": "birsk",
-        "btcGiven": 0,
         "kwh": 270000,
         "rubElec": 1351800,
         "hashrate": 19000,
@@ -73,10 +71,12 @@
         "btcMined": 0.2777,
         "btcSold": 0.2,
         "salePrice": 75000,
-        "usdRub": 75
+        "usdRub": 75,
+        "location": "birsk",
+        "btcGiven": 0
       },
       {
-        "id": 1746230400001,
+        "id": 1781355950945,
         "month": "2026-05",
         "location": "dema",
         "btcGiven": 0,
