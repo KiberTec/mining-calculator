@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-22T02:15:00.000Z",
+  "updatedAt": "2026-07-22T02:04:43.948Z",
   "journals": {
     "D": [
       {
@@ -96,7 +96,7 @@
         "btcGiven": 0,
         "kwh": 224500,
         "rubElec": 1055250,
-        "hashrate": 18500.0,
+        "hashrate": 18.5,
         "difficulty": 133.87,
         "btcMined": 0.2534,
         "btcSold": 0.12,
@@ -110,7 +110,7 @@
         "btcGiven": 0,
         "kwh": 61217,
         "rubElec": 242250,
-        "hashrate": 4400.0,
+        "hashrate": 4400,
         "difficulty": 133.87,
         "btcMined": 0.0623,
         "btcSold": 0.03,
@@ -123,6 +123,5 @@
     "2026-05": 136.60707085477506,
     "2026-04": 135.5948765352566,
     "2026-06": 133.8698535403054
-  },
-  "updatedBy": "fix-hashrate-units-june"
+  }
 }
