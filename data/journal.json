@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-22T01:48:51.953Z",
+  "updatedAt": "2026-07-22T01:54:38.439Z",
   "journals": {
     "D": [
       {
@@ -88,6 +88,20 @@
         "btcSold": 0.01,
         "salePrice": 72000,
         "usdRub": 76
+      },
+      {
+        "id": 1784685276605,
+        "month": "2026-06",
+        "location": "birsk",
+        "btcGiven": 0,
+        "kwh": 224500,
+        "rubElec": 1055250,
+        "hashrate": 18.5,
+        "difficulty": 133.87,
+        "btcMined": 0.2534,
+        "btcSold": 0.12,
+        "salePrice": 65000,
+        "usdRub": 79
       }
     ]
   },
