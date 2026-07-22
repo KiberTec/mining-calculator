@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-22T02:04:43.948Z",
+  "updatedAt": "2026-07-22T02:05:03.777Z",
   "journals": {
     "D": [
       {
@@ -96,7 +96,7 @@
         "btcGiven": 0,
         "kwh": 224500,
         "rubElec": 1055250,
-        "hashrate": 18.5,
+        "hashrate": 18500,
         "difficulty": 133.87,
         "btcMined": 0.2534,
         "btcSold": 0.12,
