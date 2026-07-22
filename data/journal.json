@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-22T01:57:20.158Z",
+  "updatedAt": "2026-07-22T01:58:22.436Z",
   "journals": {
     "D": [
       {
@@ -112,7 +112,7 @@
         "rubElec": 242250,
         "hashrate": 4.4,
         "difficulty": 133.87,
-        "btcMined": 0,
+        "btcMined": 0.0623,
         "btcSold": 0.03,
         "salePrice": 65000,
         "usdRub": 79
