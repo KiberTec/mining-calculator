@@ -1198,15 +1198,20 @@
 
     <div class="full-panel section-gap" id="chartPanel3">
       <div class="panel-title">Себестоимость 1 BTC по месяцам ($)</div>
+      <div class="chart-legend" id="chart3Legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Бирск</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Дема</div>
+      </div>
       <div class="chart-wrap"><canvas id="j_chart3"></canvas></div>
     </div>
 
     <!-- Hashprice benchmark chart -->
     <div class="full-panel section-gap" id="chartPanelHashprice">
       <div class="panel-title">⚡ Hashprice: наш факт vs сеть ($/TH/day)</div>
-      <div class="chart-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Наш hashprice (факт)</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Сетевой hashprice (бенчмарк)</div>
+      <div class="chart-legend" id="chartHashpriceLegend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Бирск (факт)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Дема (факт)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#8b91a8"></div>Сеть (бенчмарк)</div>
       </div>
       <div class="chart-wrap tall"><canvas id="j_chartHashprice"></canvas></div>
       <div style="margin-top: 10px; padding: 10px 14px; background: var(--bg3); border-radius: var(--radius); font-size: 12px; color: var(--text2); line-height: 1.5;">
@@ -3048,16 +3053,19 @@ function renderJournalCharts(entries) {
     return;
   }
 
-  // Если фильтр All и есть несколько записей в один месяц → добавить суффикс с локацией
+  const hasBirsk = entries.some(e => (e.location || 'birsk') === 'birsk');
+  const hasDema  = entries.some(e => (e.location || 'birsk') === 'dema');
+  const splitLoc = hasBirsk && hasDema; // обе локации → линии отдельно
+
+  // Бар-графики: если обе локации — подпись месяца + Б/Д (столбики рядом по записям)
   const monthCounts = entries.reduce((a, e) => { a[e.month] = (a[e.month] || 0) + 1; return a; }, {});
-  const labels = entries.map(e => {
+  const barLabels = entries.map(e => {
     if (monthCounts[e.month] > 1) {
       return e.month + ' ' + LOC_META[e.location || 'birsk'].short;
     }
     return e.month;
   });
-  // Доход в графике раскладываем на 2 части (stacked): кэш от продаж + остаток BTC по тек. цене.
-  // Так видно: сколько ушло в наличку и сколько накоплено в битке.
+
   const cashRev = entries.map(e => Math.round(((e.btcSold || 0) * (e.salePrice || 0) * (e.usdRub || 0)) / 1000));
   const hodlRev = entries.map(e => {
     const heldBtc = Math.max(0, entryNetBtcMined(e) - (e.btcSold || 0));
@@ -3069,18 +3077,13 @@ function renderJournalCharts(entries) {
   const mined   = entries.map(e => +entryNetBtcMined(e).toFixed(5));
   const sold    = entries.map(e => +e.btcSold.toFixed(5));
   const kept    = entries.map((e,i) => +(mined[i] - sold[i]).toFixed(5));
-  const costPerBtc = entries.map(e => {
-    const netMined = entryNetBtcMined(e);
-    if (netMined <= 0 || e.usdRub <= 0) return 0;
-    return Math.round(entryTotalCostUsd(e) / netMined);
-  });
 
-  // Chart 1: stacked Доход (Кэш + HODL) + Расходы + Фин. итог. Каждая «свеча» в своём стеке.
+  // Chart 1: stacked bars
   if (jChart1) jChart1.destroy();
   const baseOpts = chartOpts(v => fmt(v)+'k ₽', ctx => ctx.dataset.label+': '+fmt(ctx.parsed.y)+' тыс. ₽');
   jChart1 = new Chart(document.getElementById('j_chart1'), {
     type: 'bar',
-    data: { labels, datasets: [
+    data: { labels: barLabels, datasets: [
       { label:'Кэш от продаж', data:cashRev, stack:'rev', backgroundColor:'rgba(29,185,122,0.75)', borderColor:'#1db97a', borderWidth:1 },
       { label:'Стоимость HODL', data:hodlRev, stack:'rev', backgroundColor:'rgba(247,147,26,0.7)',  borderColor:'#f7931a', borderWidth:1 },
       { label:'Расходы',         data:costs,   stack:'exp', backgroundColor:'rgba(226,84,75,0.7)',  borderColor:'#e2544b', borderWidth:1 },
@@ -3095,11 +3098,11 @@ function renderJournalCharts(entries) {
     }
   });
 
-  // Chart 2: BTC mined / sold / kept (bar)
+  // Chart 2: BTC bars
   if (jChart2) jChart2.destroy();
   jChart2 = new Chart(document.getElementById('j_chart2'), {
     type: 'bar',
-    data: { labels, datasets: [
+    data: { labels: barLabels, datasets: [
       { label:'Намайнено', data:mined, backgroundColor:'rgba(247,147,26,0.7)', borderColor:'#f7931a', borderWidth:1 },
       { label:'Продано', data:sold, backgroundColor:'rgba(180,109,229,0.7)', borderColor:'#b46de5', borderWidth:1 },
       { label:'Осталось', data:kept, backgroundColor:'rgba(29,185,122,0.7)', borderColor:'#1db97a', borderWidth:1 },
@@ -3107,33 +3110,97 @@ function renderJournalCharts(entries) {
     options: chartOpts(v => v.toFixed(4)+' BTC', ctx => ctx.dataset.label+': '+ctx.parsed.y.toFixed(5)+' BTC')
   });
 
-  // Chart 3: cost per BTC (line)
-  if (jChart3) jChart3.destroy();
-  jChart3 = new Chart(document.getElementById('j_chart3'), {
-    type: 'line',
-    data: { labels, datasets: [
-      { label:'Себест. 1 BTC', data:costPerBtc, borderColor:'#f7931a', backgroundColor:'rgba(247,147,26,0.1)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#f7931a', tension:0.3, fill:true }
-    ]},
-    options: chartOpts(v => '$'+fmtEn(v), ctx => 'Себест: $'+fmtEn(ctx.parsed.y))
-  });
+  // --- Line charts: по локациям отдельно (месяцы на оси X) ---
+  const months = [...new Set(entries.map(e => e.month))].sort();
+  const byLoc = (loc) => Object.fromEntries(
+    entries.filter(e => (e.location || 'birsk') === loc).map(e => [e.month, e])
+  );
+  const mapB = byLoc('birsk');
+  const mapD = byLoc('dema');
 
-  // Hashprice chart: наш факт vs сетевой ($/TH/day)
-  const ourHp = entries.map(e => +entryActualHashpriceUsdPerThDay(e).toFixed(3));
-  const netHp = entries.map(e => {
+  const costOf = (e) => {
+    if (!e) return null;
+    const net = entryNetBtcMined(e);
+    if (net <= 0) return null;
+    return Math.round(entryTotalCostUsd(e) / net);
+  };
+  const hpOf = (e) => e ? +entryActualHashpriceUsdPerThDay(e).toFixed(3) : null;
+  const netHpOf = (e) => {
+    if (!e) return null;
     const px = e.salePrice > 0 ? e.salePrice : (window._liveBtcPrice || 0);
     const diff = e.difficulty || window._liveDifficulty || 0;
     return +networkHashpriceUsdPerThDay(px, diff).toFixed(3);
+  };
+
+  const lineOpts = (yTickFn, tooltipFn) => {
+    const o = chartOpts(yTickFn, tooltipFn);
+    o.scales = o.scales || {};
+    // spanGaps: если в месяце нет одной локации — линия не рвётся
+    return o;
+  };
+
+  // Chart 3: себестоимость — две линии (Бирск / Дема) или одна
+  if (jChart3) jChart3.destroy();
+  const lg3 = document.getElementById('chart3Legend');
+  let costDatasets;
+  if (splitLoc) {
+    if (lg3) lg3.style.display = '';
+    costDatasets = [
+      { label:'Бирск', data: months.map(m => costOf(mapB[m])), borderColor:'#4a90e2', backgroundColor:'rgba(74,144,226,0.12)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#4a90e2', tension:0.3, fill:false, spanGaps:true },
+      { label:'Дема',  data: months.map(m => costOf(mapD[m])), borderColor:'#f7931a', backgroundColor:'rgba(247,147,26,0.12)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#f7931a', tension:0.3, fill:false, spanGaps:true },
+    ];
+  } else {
+    if (lg3) lg3.style.display = 'none';
+    const loc = hasDema ? 'dema' : 'birsk';
+    const color = loc === 'dema' ? '#f7931a' : '#4a90e2';
+    const map = loc === 'dema' ? mapD : mapB;
+    costDatasets = [
+      { label:'Себест. 1 BTC · ' + LOC_META[loc].label, data: months.map(m => costOf(map[m])), borderColor:color, backgroundColor: color === '#f7931a' ? 'rgba(247,147,26,0.1)' : 'rgba(74,144,226,0.1)', borderWidth:2, pointRadius:4, pointBackgroundColor:color, tension:0.3, fill:true, spanGaps:true }
+    ];
+  }
+  jChart3 = new Chart(document.getElementById('j_chart3'), {
+    type: 'line',
+    data: { labels: months, datasets: costDatasets },
+    options: lineOpts(v => '$'+fmtEn(v), ctx => ctx.dataset.label+': $'+fmtEn(ctx.parsed.y))
   });
+
+  // Hashprice: Бирск / Дема (факт) + сеть
   if (jChartHashprice) jChartHashprice.destroy();
   const hpCanvas = document.getElementById('j_chartHashprice');
+  const lgHp = document.getElementById('chartHashpriceLegend');
   if (hpCanvas) {
+    // Сетевой hashprice берём по любой записи месяца (одинаковый для обеих локаций)
+    const netSeries = months.map(m => {
+      const e = mapB[m] || mapD[m];
+      return netHpOf(e);
+    });
+    let hpDatasets;
+    if (splitLoc) {
+      if (lgHp) lgHp.innerHTML = `
+        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Бирск (факт)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f7931a"></div>Дема (факт)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#8b91a8"></div>Сеть (бенчмарк)</div>`;
+      hpDatasets = [
+        { label:'Бирск', data: months.map(m => hpOf(mapB[m])), borderColor:'#4a90e2', borderWidth:2, pointRadius:4, pointBackgroundColor:'#4a90e2', tension:0.3, fill:false, spanGaps:true },
+        { label:'Дема',  data: months.map(m => hpOf(mapD[m])), borderColor:'#f7931a', borderWidth:2, pointRadius:4, pointBackgroundColor:'#f7931a', tension:0.3, fill:false, spanGaps:true },
+        { label:'Сеть',  data: netSeries, borderColor:'#8b91a8', borderWidth:2, pointRadius:3, pointBackgroundColor:'#8b91a8', tension:0.3, fill:false, borderDash:[4,4], spanGaps:true },
+      ];
+    } else {
+      const loc = hasDema ? 'dema' : 'birsk';
+      const color = loc === 'dema' ? '#f7931a' : '#4a90e2';
+      const map = loc === 'dema' ? mapD : mapB;
+      if (lgHp) lgHp.innerHTML = `
+        <div class="legend-item"><div class="legend-dot" style="background:${color}"></div>${LOC_META[loc].label} (факт)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#8b91a8"></div>Сеть (бенчмарк)</div>`;
+      hpDatasets = [
+        { label: LOC_META[loc].label, data: months.map(m => hpOf(map[m])), borderColor:color, borderWidth:2, pointRadius:4, pointBackgroundColor:color, tension:0.3, fill:false, spanGaps:true },
+        { label:'Сеть', data: netSeries, borderColor:'#8b91a8', borderWidth:2, pointRadius:3, pointBackgroundColor:'#8b91a8', tension:0.3, fill:false, borderDash:[4,4], spanGaps:true },
+      ];
+    }
     jChartHashprice = new Chart(hpCanvas, {
       type: 'line',
-      data: { labels, datasets: [
-        { label:'Наш факт', data:ourHp, borderColor:'#f7931a', backgroundColor:'rgba(247,147,26,0.1)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#f7931a', tension:0.3, fill:false },
-        { label:'Сеть', data:netHp, borderColor:'#4a90e2', backgroundColor:'rgba(74,144,226,0.1)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#4a90e2', tension:0.3, fill:false, borderDash:[4,4] },
-      ]},
-      options: chartOpts(v => '$'+v.toFixed(3), ctx => ctx.dataset.label+': $'+ctx.parsed.y.toFixed(3)+'/TH/day')
+      data: { labels: months, datasets: hpDatasets },
+      options: lineOpts(v => '$'+v.toFixed(3), ctx => ctx.dataset.label+': $'+ctx.parsed.y.toFixed(3)+'/TH/day')
     });
   }
 }
