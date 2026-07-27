@@ -1133,6 +1133,47 @@
       </div>
     </div>
 
+    <!-- Кассовый дашборд -->
+    <div class="full-panel section-gap" id="cashFlowPanel">
+      <div class="panel-title">💸 Касса <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">сколько реально доносим из кармана</span></div>
+      <div class="cards-grid" id="j_cash_cards"></div>
+      <div id="j_cash_verdict" style="margin-top:14px"></div>
+      <div class="chart-legend" style="margin-top:18px">
+        <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Расходы</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Выручка от продаж</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e8a832"></div>Накопленный дефицит (линия)</div>
+      </div>
+      <div class="chart-wrap"><canvas id="j_chart_cash"></canvas></div>
+      <div style="margin-top:14px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="max-width:220px">
+          <label>Рублёвый резерв, ₽</label>
+          <input type="number" id="j_cash_reserve" step="any" placeholder="сколько есть в запасе">
+          <div class="hint">На сколько месяцев хватит при текущем оттоке</div>
+        </div>
+        <div id="j_cash_runway" style="font-size:13px;color:var(--text2);padding-bottom:8px"></div>
+      </div>
+    </div>
+
+    <!-- Монитор рисков -->
+    <div class="full-panel section-gap" id="riskMonitorPanel">
+      <div class="panel-title">🛡 Монитор рисков <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">при каких цифрах точка гаснет</span></div>
+      <div id="j_risk_cards"></div>
+      <div style="margin-top:18px;padding-top:16px;border-top:0.5px solid var(--border)">
+        <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:10px">Порог пересмотра тарифа</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div class="field" style="max-width:170px">
+            <label>Срабатывает при BTC, $</label>
+            <input type="number" id="j_risk_threshold" value="80000" step="any">
+          </div>
+          <div class="field" style="max-width:190px">
+            <label>Тариф после отскока, ₽</label>
+            <input type="number" id="j_risk_newtariff" step="any" placeholder="если знаешь">
+          </div>
+        </div>
+        <div id="j_risk_threshold_out" style="margin-top:14px"></div>
+      </div>
+    </div>
+
     <!-- Industry KPIs -->
     <div class="full-panel section-gap" id="industryKpisPanel">
       <div class="panel-title">🏭 Индустриальные KPI <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">по фильтру локации</span></div>
@@ -1906,7 +1947,7 @@ function loadEntries(user) {
 const STORAGE_KEY_LOC_FILTER = 'mining_journal_location_filter_v1';
 const LOC_META = {
   birsk: { label: 'Бирск', icon: '🏠', short: 'Б', sub: 'классические условия' },
-  dema:  { label: 'Дема',  icon: '🤝', short: 'Д', sub: 'особые условия' },
+  dema:  { label: 'Дема',  icon: '🤝', short: 'Д', sub: 'вторая площадка' },
 };
 let currentLocationFilter = (() => {
   try { return localStorage.getItem(STORAGE_KEY_LOC_FILTER) || 'all'; } catch(e) { return 'all'; }
@@ -2501,7 +2542,15 @@ function renderJournal() {
   if (clearBtn) clearBtn.style.display = isDG ? 'none' : '';
   if (isDG) closeForm();
 
-  if (isDG) { renderCompareView(); return; }
+  if (isDG) {
+    // Касса и риски считаются по одному владельцу — в сравнении двух журналов смысла не имеют
+    ['cashFlowPanel', 'riskMonitorPanel'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    renderCompareView();
+    return;
+  }
 
   const allEntries = sortByMonth(loadEntries());
   const entries = filterByLocation(allEntries);
@@ -2588,6 +2637,8 @@ function renderJournal() {
     ${demaCard}
   `;
 
+  renderCashFlow(entries, { curBtcPrice, curUsdRub, avgUsdRub });
+  renderRiskMonitor(allEntries, { curBtcPrice, curUsdRub });
   renderIndustryKpis(entries, { curBtcPrice, curUsdRub });
   renderLocationLeaderboard(allEntries);
   renderEfficiencyFunnel(entries);
@@ -2934,6 +2985,280 @@ function renderCompareCharts(months, dMap, gMap) {
 // ============================================
 // INDUSTRY KPI CARDS (J/TH, Realization, Hashprice бенчмарк, и др.)
 // ============================================
+// ============================================
+// КАССА: сколько реально доносим из кармана
+// ============================================
+const CASH_RESERVE_KEY = 'cash_reserve_v1';
+let _cashChart = null;
+
+/** Схлопывает записи в помесячные строки: в одном месяце может быть несколько локаций. */
+function monthlyCashRows(entries, avgUsdRub) {
+  const by = {};
+  for (const e of entries) {
+    if (!by[e.month]) by[e.month] = { month: e.month, expense: 0, revenue: 0, mined: 0, sold: 0 };
+    const rate = e.usdRub || avgUsdRub || 0;
+    by[e.month].expense += e.rubElec + entryComissionUsd(e) * rate;
+    by[e.month].revenue += e.btcSold * e.salePrice * rate;
+    by[e.month].mined   += e.btcMined - entryComissionBtc(e);
+    by[e.month].sold    += e.btcSold;
+  }
+  const rows = Object.values(by).sort((a, b) => a.month.localeCompare(b.month));
+  let cum = 0;
+  for (const r of rows) { r.deficit = r.expense - r.revenue; cum += r.deficit; r.cumDeficit = cum; }
+  return rows;
+}
+
+function renderCashFlow(entries, ctx = {}) {
+  const panel = document.getElementById('cashFlowPanel');
+  if (!panel) return;
+  if (!entries || !entries.length) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  const curBtcPrice = ctx.curBtcPrice || 0;
+  const curUsdRub = ctx.curUsdRub || 0;
+  const rows = monthlyCashRows(entries, ctx.avgUsdRub);
+
+  const totalExpense = rows.reduce((s, r) => s + r.expense, 0);
+  const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
+  const totalMined   = rows.reduce((s, r) => s + r.mined, 0);
+  const totalSold    = rows.reduce((s, r) => s + r.sold, 0);
+  const deficit = totalExpense - totalRevenue;
+  const coverage = totalExpense > 0 ? (totalRevenue / totalExpense) * 100 : 0;
+  const avgDeficit = deficit / rows.length;
+
+  const btcKept = totalMined - totalSold;
+  const rubPerBtc = curBtcPrice * curUsdRub;
+  const hodlRub = btcKept * rubPerBtc;
+  const netIfSold = hodlRub - deficit;
+
+  const last = rows[rows.length - 1];
+  const btcNeeded = rubPerBtc > 0 ? last.expense / rubPerBtc : 0;
+  const sellShare = last.mined > 0 ? (btcNeeded / last.mined) * 100 : 0;
+  const hodlRunway = last.expense > 0 ? hodlRub / last.expense : 0;
+
+  const cards = [
+    { label: 'Внесено из кармана', value: fmt(Math.round(deficit)) + ' ₽',
+      sub: 'расходы минус все продажи', cls: deficit > 0 ? 'neg' : 'pos' },
+    { label: 'Покрытие расходов продажами', value: fmt(coverage, 0) + ' %',
+      sub: 'сколько закрыли своей выручкой', cls: coverage >= 100 ? 'pos' : coverage >= 70 ? 'accent' : 'neg' },
+    { label: 'Средний отток', value: fmt(Math.round(avgDeficit)) + ' ₽/мес',
+      sub: 'за ' + rows.length + ' мес наблюдений', cls: avgDeficit > 0 ? 'neg' : 'pos' },
+    { label: 'Продавать в месяц', value: btcNeeded.toFixed(5) + ' BTC',
+      sub: 'чтобы выйти в кассовый ноль', cls: 'accent' },
+    { label: 'Это от добычи', value: fmt(sellShare, 0) + ' %',
+      sub: 'остальное можно холдить', cls: sellShare <= 100 ? 'pos' : 'neg' },
+    { label: 'Запас HODL', value: hodlRunway.toFixed(1) + ' мес',
+      sub: 'стек покроет столько расходов', cls: hodlRunway >= 3 ? 'pos' : hodlRunway >= 1.5 ? 'accent' : 'neg' },
+    { label: 'Если продать всё сейчас', value: fmt(Math.round(netIfSold)) + ' ₽',
+      sub: 'стоимость HODL минус вложенное', cls: netIfSold >= 0 ? 'pos' : 'neg' },
+  ];
+  document.getElementById('j_cash_cards').innerHTML = cards.map(c =>
+    '<div class="metric-card"><div class="metric-label">' + c.label + '</div>' +
+    '<div class="metric-value ' + c.cls + '">' + c.value + '</div>' +
+    '<div style="font-size:11px;color:var(--text3);margin-top:4px">' + c.sub + '</div></div>'
+  ).join('');
+
+  const verdictColor = deficit <= 0 ? 'var(--green)' : (sellShare <= 100 ? 'var(--amber)' : 'var(--red)');
+  let verdictText;
+  if (deficit <= 0) {
+    verdictText = 'Ферма кормит себя сама: продаж хватает на все расходы, и ещё остаётся.';
+  } else if (sellShare <= 100) {
+    verdictText = 'Ты вносишь <b>' + fmt(Math.round(avgDeficit)) + ' ₽</b> в месяц из своих и обмениваешь их на биткоин — по сути покупаешь через розетку. ' +
+      'Чтобы перестать доносить, надо продавать <b>' + btcNeeded.toFixed(5) + ' BTC</b> в месяц, это <b>' + fmt(sellShare, 0) + '%</b> добычи. ' +
+      'Остальные ' + fmt(100 - sellShare, 0) + '% копятся бесплатно.';
+  } else {
+    verdictText = 'Тревожно: чтобы закрыть расходы, надо продавать <b>' + fmt(sellShare, 0) + '%</b> добычи — больше, чем добываешь. ' +
+      'Ферма не окупает электричество, стек будет таять.';
+  }
+  document.getElementById('j_cash_verdict').innerHTML =
+    '<div style="padding:14px 16px;border-radius:var(--radius);background:var(--bg3);border-left:2px solid ' + verdictColor + ';font-size:13px;color:var(--text2);line-height:1.6">' +
+    verdictText + '</div>';
+
+  // --- график ---
+  const ctxEl = document.getElementById('j_chart_cash');
+  if (_cashChart) _cashChart.destroy();
+  const toK = v => v / 1000;
+  const opts = chartOpts(v => fmt(v, 0) + 'к', c => c.dataset.label + ': ' + fmt(c.parsed.y, 0) + 'к ₽');
+  opts.interaction = { mode: 'index', intersect: false };
+  _cashChart = new Chart(ctxEl, {
+    data: {
+      labels: rows.map(r => r.month),
+      datasets: [
+        { type: 'bar', label: 'Расходы', data: rows.map(r => toK(r.expense)), backgroundColor: 'rgba(226,84,75,0.7)', borderRadius: 3 },
+        { type: 'bar', label: 'Выручка от продаж', data: rows.map(r => toK(r.revenue)), backgroundColor: 'rgba(29,185,122,0.7)', borderRadius: 3 },
+        { type: 'line', label: 'Накопленный дефицит', data: rows.map(r => toK(r.cumDeficit)),
+          borderColor: '#e8a832', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.25 },
+      ]
+    },
+    options: opts
+  });
+
+  // --- запас хода по рублёвому резерву ---
+  const reserveEl = document.getElementById('j_cash_reserve');
+  const outEl = document.getElementById('j_cash_runway');
+  const burn = last.deficit;
+  const showRunway = () => {
+    const r = parseFloat(reserveEl.value);
+    if (!isFinite(r) || r <= 0) { outEl.innerHTML = ''; return; }
+    if (burn <= 0) { outEl.innerHTML = '<span style="color:var(--green)">Отток нулевой — резерв не тратится.</span>'; return; }
+    const months = r / burn;
+    const color = months >= 6 ? 'var(--green)' : months >= 3 ? 'var(--amber)' : 'var(--red)';
+    outEl.innerHTML = 'При оттоке ' + fmt(Math.round(burn)) + ' ₽/мес хватит на <b style="color:' + color + '">' +
+      months.toFixed(1) + ' мес</b>. Дальше придётся продавать из стека.';
+  };
+  if (!reserveEl._wired) {
+    reserveEl._wired = true;
+    try { reserveEl.value = localStorage.getItem(CASH_RESERVE_KEY) || ''; } catch (e) {}
+    reserveEl.addEventListener('input', () => {
+      try { localStorage.setItem(CASH_RESERVE_KEY, reserveEl.value); } catch (e) {}
+      showRunway();
+    });
+  }
+  showRunway();
+}
+
+// ============================================
+// МОНИТОР РИСКОВ: цена и сложность отключения по точкам
+// ============================================
+const RISK_CFG_KEY = 'risk_cfg_v1';
+
+/** Приводит последний факт по точке к текущей сложности сети. */
+function locationBaseline(entry, curDiff) {
+  const comissionBtc = entryComissionBtc(entry);
+  const netMined = entry.btcMined - comissionBtc;
+  const scale = (entry.difficulty > 0 && curDiff > 0) ? entry.difficulty / curDiff : 1;
+  return {
+    month: entry.month,
+    kwh: entry.kwh,
+    costRub: entry.rubElec + entryComissionUsd(entry) * entry.usdRub,
+    btcNow: netMined * scale,
+    tariff: entry.kwh > 0 ? entry.rubElec / entry.kwh : 0,
+  };
+}
+
+function renderRiskMonitor(allEntries, ctx = {}) {
+  const panel = document.getElementById('riskMonitorPanel');
+  if (!panel) return;
+  if (!allEntries || !allEntries.length) { panel.style.display = 'none'; return; }
+
+  const curBtcPrice = ctx.curBtcPrice || 0;
+  const curUsdRub = ctx.curUsdRub || 0;
+  const curDiff = window._liveDifficulty || 0;
+  if (!curBtcPrice || !curUsdRub) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // последняя запись по каждой локации
+  const latest = {};
+  for (const e of sortByMonth(allEntries)) {
+    if (!latest[e.location] || e.month > latest[e.location].month) latest[e.location] = e;
+  }
+
+  const sites = Object.keys(latest).map(loc => {
+    const b = locationBaseline(latest[loc], curDiff);
+    const revenueRub = b.btcNow * curBtcPrice * curUsdRub;
+    const marginPct = revenueRub > 0 ? ((revenueRub - b.costRub) / revenueRub) * 100 : -100;
+    const shutdownPrice = b.btcNow > 0 && curUsdRub > 0 ? b.costRub / b.btcNow / curUsdRub : Infinity;
+    const priceBuffer = curBtcPrice > 0 ? ((curBtcPrice - shutdownPrice) / curBtcPrice) * 100 : 0;
+    const shutdownDiff = b.costRub > 0 && curDiff > 0 ? curDiff * (revenueRub / b.costRub) : Infinity;
+    const diffBuffer = curDiff > 0 ? ((shutdownDiff / curDiff) - 1) * 100 : 0;
+    const shutdownTariff = b.kwh > 0 ? revenueRub / b.kwh : 0;
+    return { loc, meta: LOC_META[loc] || LOC_META.birsk, ...b, revenueRub, marginPct, shutdownPrice, priceBuffer, shutdownDiff, diffBuffer, shutdownTariff };
+  });
+
+  document.getElementById('j_risk_cards').innerHTML =
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:12px">' +
+      'База — последний месяц по каждой точке, добыча пересчитана на текущую сложность ' +
+      (curDiff ? curDiff.toFixed(1) + ' T' : '—') + ' и цену $' + fmtEn(Math.round(curBtcPrice)) + '.' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">' +
+    sites.map(s => {
+      const tone = s.priceBuffer >= 30 ? 'var(--green)' : s.priceBuffer >= 12 ? 'var(--amber)' : 'var(--red)';
+      const barW = Math.max(0, Math.min(100, s.priceBuffer));
+      return '<div style="background:var(--bg3);border-radius:var(--radius);padding:16px 18px;border-left:2px solid ' + tone + '">' +
+        '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">' +
+          '<span style="font-size:15px;font-weight:600">' + s.meta.icon + ' ' + s.meta.label + '</span>' +
+          '<span style="font-size:11px;color:var(--text3)">по данным за ' + s.month + '</span>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Гаснет при цене BTC</div>' +
+        '<div style="font-size:26px;font-weight:650;color:' + tone + ';font-variant-numeric:tabular-nums;line-height:1.2">$' + fmtEn(Math.round(s.shutdownPrice)) + '</div>' +
+        '<div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin:10px 0 6px">' +
+          '<div style="height:100%;width:' + barW + '%;background:' + tone + ';border-radius:3px"></div>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Запас по цене <b style="color:' + tone + '">' + fmt(s.priceBuffer, 0) + '%</b> · сейчас приносит <b style="color:var(--text)">' + fmt(Math.round(s.revenueRub - s.costRub)) + ' ₽/мес</b></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:var(--text2)">' +
+          '<div><div style="color:var(--text3);font-size:11px">Гаснет при сложности</div><b style="color:var(--text)">' + fmt(s.shutdownDiff, 0) + ' T</b> (+' + fmt(s.diffBuffer, 0) + '%)</div>' +
+          '<div><div style="color:var(--text3);font-size:11px">Гаснет при тарифе</div><b style="color:var(--text)">' + fmt(s.shutdownTariff, 2) + ' ₽</b> (сейчас ' + fmt(s.tariff, 2) + ')</div>' +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+
+  renderTariffThreshold(sites, curBtcPrice, curUsdRub);
+}
+
+function renderTariffThreshold(sites, curBtcPrice, curUsdRub) {
+  const thrEl = document.getElementById('j_risk_threshold');
+  const tarEl = document.getElementById('j_risk_newtariff');
+  const outEl = document.getElementById('j_risk_threshold_out');
+  if (!thrEl || !tarEl || !outEl) return;
+
+  const draw = () => {
+    const threshold = parseFloat(thrEl.value);
+    const newTariff = parseFloat(tarEl.value);
+    if (!isFinite(threshold) || threshold <= 0) { outEl.innerHTML = ''; return; }
+
+    const distPct = ((threshold - curBtcPrice) / curBtcPrice) * 100;
+    let html = '<div style="font-size:13px;color:var(--text2);line-height:1.6">' +
+      'Сейчас $' + fmtEn(Math.round(curBtcPrice)) + ', до порога <b style="color:var(--accent)">' +
+      (distPct >= 0 ? '+' + fmt(distPct, 1) + '%' : 'порог уже пройден') + '</b>' +
+      (distPct >= 0 ? ' роста цены.' : ' — тариф должен был отскочить.') + '</div>';
+
+    if (isFinite(newTariff) && newTariff > 0) {
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px">' +
+        sites.map(s => {
+          // прибыль перед самым порогом на текущем тарифе
+          const profitBefore = s.btcNow * threshold * curUsdRub - s.costRub;
+          const costAfter = s.kwh * newTariff + (s.costRub - s.kwh * s.tariff);
+          const profitAfter = s.btcNow * threshold * curUsdRub - costAfter;
+          const lost = profitBefore - profitAfter;
+          // цена, на которой прибыль вернётся к доскачковой
+          const recover = s.btcNow > 0 ? (profitBefore + costAfter) / (s.btcNow * curUsdRub) : Infinity;
+          return '<div style="background:var(--bg3);border-radius:var(--radius);padding:14px 16px">' +
+            '<div style="font-size:13px;font-weight:600;margin-bottom:8px">' + s.meta.icon + ' ' + s.meta.label + '</div>' +
+            '<div style="font-size:12px;color:var(--text2);line-height:1.7">' +
+              'На $' + fmtEn(Math.round(threshold)) + ' до отскока: <b style="color:var(--green)">' + fmt(Math.round(profitBefore)) + ' ₽/мес</b><br>' +
+              'После отскока на ' + fmt(newTariff, 2) + ' ₽: <b style="color:var(--red)">' + fmt(Math.round(profitAfter)) + ' ₽/мес</b><br>' +
+              'Потеря <b>' + fmt(Math.round(lost)) + ' ₽/мес</b>, вернёшься к прежней прибыли только при BTC <b style="color:var(--accent)">$' + fmtEn(Math.round(recover)) + '</b>' +
+            '</div></div>';
+        }).join('') + '</div>' +
+        '<div style="margin-top:12px;font-size:12px;color:var(--text3);line-height:1.6">' +
+          'Диапазон между порогом и ценой возврата — мёртвая зона: биткоин растёт, а ты не зарабатываешь. ' +
+          'Если точка хочет долю в апсайде, честнее договориться на процент от добычи без ступеньки.' +
+        '</div>';
+    } else {
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--text3)">Впиши тариф после отскока — покажу, сколько теряешь на переходе и до какой цены BTC тянется мёртвая зона.</div>';
+    }
+    outEl.innerHTML = html;
+  };
+
+  if (!thrEl._wired) {
+    thrEl._wired = true;
+    try {
+      const cfg = JSON.parse(localStorage.getItem(RISK_CFG_KEY) || 'null');
+      if (cfg) {
+        if (cfg.threshold) thrEl.value = cfg.threshold;
+        if (cfg.newTariff) tarEl.value = cfg.newTariff;
+      }
+    } catch (e) {}
+    const save = () => {
+      try { localStorage.setItem(RISK_CFG_KEY, JSON.stringify({ threshold: thrEl.value, newTariff: tarEl.value })); } catch (e) {}
+      draw();
+    };
+    thrEl.addEventListener('input', save);
+    tarEl.addEventListener('input', save);
+  }
+  draw();
+}
+
 function renderIndustryKpis(entries, ctx = {}) {
   const panel = document.getElementById('industryKpisPanel');
   if (!panel) return;
