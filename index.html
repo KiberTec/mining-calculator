@@ -1342,13 +1342,13 @@
         </div>
         <div class="field">
           <label>Рост сложности, %/мес</label>
-          <input type="number" id="roi_diffgrow" value="2" step="any">
-          <div class="hint">Исторически 2–4% в месяц</div>
+          <input type="number" id="roi_diffgrow" value="1" step="any">
+          <div class="hint" id="roi_diffgrow_hint">Главный параметр: за 36 мес +1%/мес даёт ×1.43 к сложности, +2%/мес уже ×2.0</div>
         </div>
         <div class="field">
           <label>Рост цены BTC, %/мес</label>
           <input type="number" id="roi_pricegrow" value="0" step="any">
-          <div class="hint">0 = консервативно, цена не растёт</div>
+          <div class="hint">0 = биткоин стоит на месте все 3 года. Сложность обычно растёт вслед за ценой, так что 0% здесь вместе с высоким ростом сложности — это худший случай</div>
         </div>
         <div class="field">
           <label>Горизонт расчёта, мес</label>
@@ -1738,7 +1738,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       }, 50);
     }
     if (btn.dataset.tab === 'roi') {
-      setTimeout(() => { if (typeof renderRoi === 'function') renderRoi(); }, 50);
+      setTimeout(() => {
+        if (typeof roiRenderDiffHint === 'function') roiRenderDiffHint();
+        if (typeof renderRoi === 'function') renderRoi();
+      }, 50);
     }
   });
 });
@@ -4664,7 +4667,7 @@ const ROI_LOC_PRESETS = {
 const ROI_DEFAULTS = {
   preset: 's21pro', hashrate: 234, power: 3510, price: 350000, priceCur: 'rub',
   qty: 1, setup: 0, locPreset: 'custom', tariff: 2.64, uptime: 97, poolfee: 1,
-  partner: 0, other: 0, diffgrow: 2, pricegrow: 0, horizon: 36,
+  partner: 0, other: 0, diffgrow: 1, pricegrow: 0, horizon: 36,
 };
 
 let _roiChart = null;
@@ -4811,9 +4814,14 @@ function renderRoi() {
   let verdictColor, verdictIcon, verdictText;
   if (base.payback === null) {
     const recovered = o.capexRub > 0 ? ((totalProfit + o.capexRub) / o.capexRub) * 100 : 0;
+    // Месяц, в котором растущая сложность делает добычу убыточной
+    const deadMonth = base.rows.findIndex(r => r.profitRub <= 0);
     verdictColor = 'var(--red)'; verdictIcon = '⛔';
-    verdictText = 'При этих вводных аппарат не окупается за ' + o.horizon + ' мес — вернётся только ' +
-      fmt(Math.max(0, recovered), 0) + '% вложений. Нужна цена BTC выше, тариф ниже или аппарат дешевле.';
+    verdictText = 'Не окупается за ' + o.horizon + ' мес — вернётся только ' +
+      fmt(Math.max(0, recovered), 0) + '% вложений. ' +
+      (deadMonth >= 0
+        ? 'Причина не в цене аппарата: при росте сложности ' + fmt(o.diffGrow * 100, 1) + '%/мес добыча уходит в минус к ' + (deadMonth + 1) + '-му месяцу, и накопление останавливается.'
+        : 'Прибыль есть, но её не хватает, чтобы отбить вложения за этот срок.');
   } else if (base.payback <= 12) {
     verdictColor = 'var(--green)'; verdictIcon = '✅';
     verdictText = 'Отличная сделка — окупаемость меньше года.';
@@ -4941,6 +4949,42 @@ function renderRoi() {
   roiSaveState();
 }
 
+/** Фактический среднемесячный рост сложности по данным журнала — якорь для прогноза. */
+function roiObservedDiffGrowth() {
+  const byMonth = {};
+  try {
+    Object.entries(loadDiffCache()).forEach(([m, d]) => { if (d > 0) byMonth[m] = d; });
+  } catch(e) {}
+  ['D', 'G'].forEach(u => {
+    try {
+      loadEntries(u).forEach(e => { if (e.month && e.difficulty > 0) byMonth[e.month] = e.difficulty; });
+    } catch(e) {}
+  });
+  const months = Object.keys(byMonth).sort();
+  if (months.length < 2) return null;
+  const first = byMonth[months[0]], last = byMonth[months[months.length - 1]];
+  const span = months.length - 1;
+  return { pct: (Math.pow(last / first, 1 / span) - 1) * 100, span: span + 1 };
+}
+
+function roiRenderDiffHint() {
+  const el = document.getElementById('roi_diffgrow_hint');
+  if (!el) return;
+  const obs = roiObservedDiffGrowth();
+  const base = 'Главный параметр: за 36 мес +1%/мес даёт ×1.43 к сложности, +2%/мес уже ×2.0';
+  if (!obs) { el.innerHTML = base; return; }
+  el.innerHTML = base +
+    '<br>По твоему журналу за ' + obs.span + ' мес: <b style="color:var(--text2)">' +
+    (obs.pct >= 0 ? '+' : '') + obs.pct.toFixed(2) + '%/мес</b> ' +
+    '<a href="#" id="roi_apply_obs" style="color:var(--accent);text-decoration:none">применить</a>';
+  const link = document.getElementById('roi_apply_obs');
+  if (link) link.addEventListener('click', ev => {
+    ev.preventDefault();
+    document.getElementById('roi_diffgrow').value = obs.pct.toFixed(2);
+    renderRoi();
+  });
+}
+
 // Рыночные поля не считаются пользовательской настройкой: пока их не трогали руками,
 // они всегда отражают свежие live-данные.
 const ROI_MARKET_FIELDS = ['roi_btc', 'roi_usdrub', 'roi_diff'];
@@ -4980,6 +5024,7 @@ function roiInit() {
   ROI_MARKET_FIELDS.forEach(id => {
     document.getElementById(id).addEventListener('input', () => { _roiMarketTouched = true; });
   });
+  roiRenderDiffHint();
 
   sel.addEventListener('change', () => {
     const p = ASIC_PRESETS.find(x => x.id === sel.value);
