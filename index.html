@@ -174,11 +174,13 @@
     color: var(--text3); margin-top: 1px;
   }
   .tab-btn.active .tab-tag { color: var(--text2); }
+  .tab-btn .tab-short { display: none; }
 
   @media (max-width: 640px) {
     .tabs { gap: 3px; padding: 4px; margin-bottom: 16px; }
-    .tab-btn { padding: 9px 6px; font-size: 12px; }
-    .tab-btn .tab-tag { display: none; }
+    .tab-btn { padding: 9px 4px; font-size: 12px; }
+    .tab-btn .tab-tag, .tab-btn .tab-full { display: none; }
+    .tab-btn .tab-short { display: inline; }
   }
 
   .tab-section { display: none; }
@@ -871,9 +873,10 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab-btn active" data-tab="classic">Классический расчёт<span class="tab-tag">Оплата только деньгами</span></button>
-    <button class="tab-btn" data-tab="special">Особые условия<span class="tab-tag">% от добычи + рубли</span></button>
-    <button class="tab-btn" data-tab="journal">Журнал<span class="tab-tag">Реальные данные по месяцам</span></button>
+    <button class="tab-btn active" data-tab="classic"><span class="tab-full">Классический расчёт</span><span class="tab-short">Классика</span><span class="tab-tag">Оплата только деньгами</span></button>
+    <button class="tab-btn" data-tab="special"><span class="tab-full">Особые условия</span><span class="tab-short">Особые</span><span class="tab-tag">% от добычи + рубли</span></button>
+    <button class="tab-btn" data-tab="journal"><span class="tab-full">Журнал</span><span class="tab-short">Журнал</span><span class="tab-tag">Реальные данные по месяцам</span></button>
+    <button class="tab-btn" data-tab="roi"><span class="tab-full">Окупаемость</span><span class="tab-short">Окуп.</span><span class="tab-tag">Расчёт покупки аппарата</span></button>
   </div>
 
   <!-- TAB 1: Special (BTC %) -->
@@ -1233,6 +1236,184 @@
 
   </div><!-- /tab-journal -->
 
+  <!-- TAB 4: ROI нового аппарата -->
+  <div class="tab-section" id="tab-roi">
+
+    <div class="formula-box section-gap">
+      Окупаемость = <span class="hl">цена аппарата ÷ чистая прибыль в месяц</span>, но с поправкой на <span class="hl">рост сложности сети</span> — каждый месяц один и тот же аппарат добывает меньше BTC.
+      <div class="note">Расчёт помесячный: считается добыча при растущей сложности, накопленный кэшфлоу и месяц, в котором он выходит в плюс.</div>
+    </div>
+
+    <div class="grid-2 section-gap">
+
+      <!-- Аппарат -->
+      <div class="panel">
+        <div class="panel-title">⚙️ Аппарат</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div class="field" style="grid-column:1/-1">
+            <label>Модель (пресет)</label>
+            <select id="roi_preset"></select>
+            <div class="hint">Выбери модель — хешрейт и потребление подставятся сами</div>
+          </div>
+          <div class="field">
+            <label>Хешрейт, TH/s</label>
+            <input type="number" id="roi_hashrate" value="234" step="any">
+          </div>
+          <div class="field">
+            <label>Потребление, Вт</label>
+            <input type="number" id="roi_power" value="3510" step="any">
+          </div>
+          <div class="field">
+            <label>Цена аппарата</label>
+            <input type="number" id="roi_price" value="350000" step="any">
+          </div>
+          <div class="field">
+            <label>Валюта цены</label>
+            <select id="roi_price_cur">
+              <option value="rub">₽ рубли</option>
+              <option value="usd">$ доллары</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Количество, шт</label>
+            <input type="number" id="roi_qty" value="1" step="1" min="1">
+          </div>
+          <div class="field">
+            <label>Доставка/монтаж, ₽</label>
+            <input type="number" id="roi_setup" value="0" step="any">
+          </div>
+        </div>
+        <div id="roi_machine_summary" class="formula-box blue-box" style="margin:14px 0 0"></div>
+      </div>
+
+      <!-- Точка -->
+      <div class="panel">
+        <div class="panel-title">📍 Условия точки</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div class="field" style="grid-column:1/-1">
+            <label>Шаблон точки</label>
+            <select id="roi_loc_preset">
+              <option value="custom">Свои параметры</option>
+              <option value="birsk">Бирск — классические условия</option>
+              <option value="dema">Дема — особые условия</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Тариф, ₽/кВт·ч</label>
+            <input type="number" id="roi_tariff" value="2.64" step="any">
+          </div>
+          <div class="field">
+            <label>Uptime, %</label>
+            <input type="number" id="roi_uptime" value="97" step="any">
+          </div>
+          <div class="field">
+            <label>Комиссия пула, %</label>
+            <input type="number" id="roi_poolfee" value="1" step="any">
+          </div>
+          <div class="field">
+            <label>Партнёру, % от добычи</label>
+            <input type="number" id="roi_partner" value="0" step="any">
+            <div class="hint">Для Демы — доля хозяина точки</div>
+          </div>
+          <div class="field" style="grid-column:1/-1">
+            <label>Прочие расходы, ₽/мес (на весь парк)</label>
+            <input type="number" id="roi_other" value="0" step="any">
+            <div class="hint">Хостинг, обслуживание, ремонт, интернет</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Рынок -->
+    <div class="full-panel section-gap">
+      <div class="panel-title">📈 Рынок и прогноз</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Цена BTC, $</label>
+          <input type="number" id="roi_btc" value="65000" step="any">
+        </div>
+        <div class="field">
+          <label>Курс USD/RUB</label>
+          <input type="number" id="roi_usdrub" value="80" step="any">
+        </div>
+        <div class="field">
+          <label>Сложность сети, T</label>
+          <input type="number" id="roi_diff" value="140" step="any">
+        </div>
+        <div class="field">
+          <label>Рост сложности, %/мес</label>
+          <input type="number" id="roi_diffgrow" value="2" step="any">
+          <div class="hint">Исторически 2–4% в месяц</div>
+        </div>
+        <div class="field">
+          <label>Рост цены BTC, %/мес</label>
+          <input type="number" id="roi_pricegrow" value="0" step="any">
+          <div class="hint">0 = консервативно, цена не растёт</div>
+        </div>
+        <div class="field">
+          <label>Горизонт расчёта, мес</label>
+          <input type="number" id="roi_horizon" value="36" step="1" min="6" max="120">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:14px">
+        <button class="btn small" id="roi_use_live">↻ Подставить live-данные</button>
+        <button class="btn small ghost" id="roi_reset">Сбросить</button>
+      </div>
+    </div>
+
+    <!-- Вердикт -->
+    <div class="full-panel section-gap" id="roi_verdict_panel">
+      <div class="panel-title">Вердикт</div>
+      <div id="roi_verdict"></div>
+    </div>
+
+    <!-- Метрики -->
+    <div class="full-panel section-gap">
+      <div class="panel-title">Показатели первого месяца</div>
+      <div class="cards-grid" id="roi_cards"></div>
+    </div>
+
+    <!-- Запас прочности -->
+    <div class="full-panel section-gap">
+      <div class="panel-title">Запас прочности <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0;">при каких цифрах уходим в ноль</span></div>
+      <div class="compare-grid" id="roi_breakeven"></div>
+    </div>
+
+    <!-- График -->
+    <div class="full-panel section-gap">
+      <div class="panel-title">Накопленный кэшфлоу (тыс. ₽)</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4a90e2"></div>Базовый сценарий</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1db97a"></div>Оптимистичный (рост сложности вдвое медленнее)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e2544b"></div>Пессимистичный (рост сложности вдвое быстрее)</div>
+      </div>
+      <div class="chart-wrap tall"><canvas id="roi_chart"></canvas></div>
+      <div class="note" style="font-size:12px;color:var(--text3);margin-top:8px">Точка пересечения с нулём — момент окупаемости.</div>
+    </div>
+
+    <!-- Помесячная таблица -->
+    <div class="full-panel">
+      <div class="panel-title">Помесячная раскладка</div>
+      <div class="table-wrap">
+        <table id="roi_table">
+          <thead>
+            <tr>
+              <th>Мес</th>
+              <th>Сложность, T</th>
+              <th>Добыча BTC</th>
+              <th>Доход ₽</th>
+              <th>Эл-во ₽</th>
+              <th>Чистыми ₽</th>
+              <th>Накоплено ₽</th>
+            </tr>
+          </thead>
+          <tbody id="roi_tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /tab-roi -->
+
 </div>
 
 <!-- Sync status indicator (invisible, auto-sync) -->
@@ -1555,6 +1736,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         if (typeof updateJournalLockUI === 'function') updateJournalLockUI();
         renderJournal();
       }, 50);
+    }
+    if (btn.dataset.tab === 'roi') {
+      setTimeout(() => { if (typeof renderRoi === 'function') renderRoi(); }, 50);
     }
   });
 });
@@ -3812,6 +3996,8 @@ async function refreshAllLiveData() {
       renderLiveCard('Diff', null);
     }
   }
+
+  if (typeof roiOnLiveData === 'function') roiOnLiveData();
 }
 
 function applyLiveValue(target) {
@@ -4444,6 +4630,404 @@ function showSyncToast(msg, ok) {
     ghSyncNow();
   }, 30000);
 })();
+
+
+// ============================================
+// TAB 4: ROI НОВОГО АППАРАТА
+// ============================================
+const ROI_STORAGE_KEY = 'roi_calc_v1';
+const ROI_DAYS = 30;
+
+const ASIC_PRESETS = [
+  { id: 'custom',    name: 'Свой аппарат (ввести вручную)', th: null, w: null },
+  { id: 's21xp',     name: 'Antminer S21 XP — 270 TH/s / 3645 Вт',      th: 270, w: 3645 },
+  { id: 's21pro',    name: 'Antminer S21 Pro — 234 TH/s / 3510 Вт',     th: 234, w: 3510 },
+  { id: 's21plus',   name: 'Antminer S21+ — 216 TH/s / 3564 Вт',        th: 216, w: 3564 },
+  { id: 's21',       name: 'Antminer S21 — 200 TH/s / 3500 Вт',         th: 200, w: 3500 },
+  { id: 's19xp',     name: 'Antminer S19 XP — 141 TH/s / 3010 Вт',      th: 141, w: 3010 },
+  { id: 's19kpro',   name: 'Antminer S19k Pro — 120 TH/s / 2760 Вт',    th: 120, w: 2760 },
+  { id: 's19jpro',   name: 'Antminer S19j Pro — 104 TH/s / 3068 Вт',    th: 104, w: 3068 },
+  { id: 'm60s',      name: 'Whatsminer M60S — 186 TH/s / 3441 Вт',      th: 186, w: 3441 },
+  { id: 'm60splus',  name: 'Whatsminer M60S+ — 200 TH/s / 3400 Вт',     th: 200, w: 3400 },
+  { id: 'm50s',      name: 'Whatsminer M50S — 126 TH/s / 3276 Вт',      th: 126, w: 3276 },
+  { id: 'm30s',      name: 'Whatsminer M30S++ — 112 TH/s / 3472 Вт',    th: 112, w: 3472 },
+  { id: 'a4pro',     name: 'Bitdeer SEALMINER A4 Pro — 336 TH/s / 3662 Вт', th: 336, w: 3662 },
+  { id: 'a2pro',     name: 'Bitdeer SEALMINER A2 Pro — 226 TH/s / 3400 Вт', th: 226, w: 3400 },
+  { id: 'avalon15',  name: 'Avalon A1566 — 185 TH/s / 3420 Вт',         th: 185, w: 3420 },
+];
+
+const ROI_LOC_PRESETS = {
+  birsk: { tariff: 2.64, partner: 0,  note: 'Бирск: платим только за электричество' },
+  dema:  { tariff: 2.64, partner: 15, note: 'Дема: электричество + доля хозяину точки' },
+};
+
+const ROI_DEFAULTS = {
+  preset: 's21pro', hashrate: 234, power: 3510, price: 350000, priceCur: 'rub',
+  qty: 1, setup: 0, locPreset: 'custom', tariff: 2.64, uptime: 97, poolfee: 1,
+  partner: 0, other: 0, diffgrow: 2, pricegrow: 0, horizon: 36,
+};
+
+let _roiChart = null;
+
+const ROI_FIELDS = {
+  roi_preset: 'preset', roi_hashrate: 'hashrate', roi_power: 'power',
+  roi_price: 'price', roi_price_cur: 'priceCur', roi_qty: 'qty', roi_setup: 'setup',
+  roi_loc_preset: 'locPreset', roi_tariff: 'tariff', roi_uptime: 'uptime',
+  roi_poolfee: 'poolfee', roi_partner: 'partner', roi_other: 'other',
+  roi_btc: 'btc', roi_usdrub: 'usdrub', roi_diff: 'diff',
+  roi_diffgrow: 'diffgrow', roi_pricegrow: 'pricegrow', roi_horizon: 'horizon',
+};
+
+function roiSaveState() {
+  const state = {};
+  Object.keys(ROI_FIELDS).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) state[ROI_FIELDS[id]] = el.value;
+  });
+  try { localStorage.setItem(ROI_STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function roiLoadState() {
+  try {
+    const raw = localStorage.getItem(ROI_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function roiVal(id, fallback) {
+  const el = document.getElementById(id);
+  if (!el) return fallback;
+  const v = parseFloat(el.value);
+  return isFinite(v) ? v : fallback;
+}
+
+/**
+ * Помесячная модель: сложность и цена BTC растут по заданным темпам,
+ * поэтому добыча в BTC каждый месяц падает, а выручка меняется нелинейно.
+ */
+function roiSimulate(opts) {
+  const { hashrateTotal, powerKw, tariff, uptime, poolfee, partner, otherRub,
+          btcPrice, usdRub, diff0, diffGrow, priceGrow, horizon, capexRub } = opts;
+
+  const kwhMonth = powerKw * 24 * ROI_DAYS * uptime;
+  const elecRub = kwhMonth * tariff;
+  const keepShare = (1 - poolfee) * (1 - partner);
+
+  const rows = [];
+  let cum = -capexRub;
+  const cumSeries = [cum];
+
+  for (let m = 1; m <= horizon; m++) {
+    const diff = diff0 * Math.pow(1 + diffGrow, m - 1);
+    const price = btcPrice * Math.pow(1 + priceGrow, m - 1);
+    const grossBtc = calcBtcMined(hashrateTotal, diff) * uptime;
+    const netBtc = grossBtc * keepShare;
+    const revenueRub = netBtc * price * usdRub;
+    const profitRub = revenueRub - elecRub - otherRub;
+    cum += profitRub;
+    cumSeries.push(cum);
+    rows.push({ m, diff, price, grossBtc, netBtc, revenueRub, elecRub, otherRub, profitRub, cum });
+  }
+
+  // Месяц выхода в плюс (с линейной интерполяцией внутри месяца)
+  let payback = null;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].cum >= 0) {
+      const prev = i === 0 ? -capexRub : rows[i-1].cum;
+      const frac = rows[i].profitRub > 0 ? (-prev / rows[i].profitRub) : 0;
+      payback = i + Math.max(0, Math.min(1, frac));
+      break;
+    }
+  }
+
+  return { rows, cumSeries, payback, kwhMonth, elecRub };
+}
+
+function roiGatherOpts() {
+  const qty       = Math.max(1, roiVal('roi_qty', 1));
+  const hashOne   = roiVal('roi_hashrate', 0);
+  const powerOne  = roiVal('roi_power', 0);
+  const priceRaw  = roiVal('roi_price', 0);
+  const priceCur  = document.getElementById('roi_price_cur').value;
+  const setupRub  = roiVal('roi_setup', 0);
+  const usdRub    = roiVal('roi_usdrub', 80);
+  const capexRub  = (priceCur === 'usd' ? priceRaw * usdRub : priceRaw) * qty + setupRub;
+
+  return {
+    qty, hashOne, powerOne, priceCur, capexRub, usdRub,
+    hashrateTotal: hashOne * qty,
+    powerKw: powerOne * qty / 1000,
+    tariff:    roiVal('roi_tariff', 0),
+    uptime:    Math.max(0, Math.min(1, roiVal('roi_uptime', 100) / 100)),
+    poolfee:   Math.max(0, Math.min(1, roiVal('roi_poolfee', 0) / 100)),
+    partner:   Math.max(0, Math.min(1, roiVal('roi_partner', 0) / 100)),
+    otherRub:  roiVal('roi_other', 0),
+    btcPrice:  roiVal('roi_btc', 0),
+    diff0:     roiVal('roi_diff', 0),
+    diffGrow:  roiVal('roi_diffgrow', 0) / 100,
+    priceGrow: roiVal('roi_pricegrow', 0) / 100,
+    horizon:   Math.max(6, Math.min(120, Math.round(roiVal('roi_horizon', 36)))),
+  };
+}
+
+function roiPaybackText(p, horizon) {
+  if (p === null) return { text: 'не окупается', cls: 'neg' };
+  const years = p / 12;
+  const label = p < 12
+    ? p.toFixed(1) + ' мес'
+    : p.toFixed(1) + ' мес (' + years.toFixed(1) + ' года)';
+  const cls = p <= 12 ? 'pos' : (p <= 24 ? 'accent' : 'neg');
+  return { text: label, cls };
+}
+
+function renderRoi() {
+  const o = roiGatherOpts();
+  if (!o.hashrateTotal || !o.diff0 || !o.btcPrice) return;
+
+  const base = roiSimulate(o);
+  const optimistic = roiSimulate({ ...o, diffGrow: o.diffGrow / 2 });
+  const pessimistic = roiSimulate({ ...o, diffGrow: o.diffGrow * 2 });
+
+  const first = base.rows[0];
+  const monthCostRub = base.elecRub + o.otherRub;
+  const monthCostUsd = monthCostRub / o.usdRub;
+
+  // --- Сводка по железу ---
+  const jth = o.hashOne > 0 ? o.powerOne / o.hashOne : 0;
+  const capexUsd = o.capexRub / o.usdRub;
+  document.getElementById('roi_machine_summary').innerHTML =
+    'Итого: <span class="hl">' + fmt(o.hashrateTotal, 0) + ' TH/s</span> · ' +
+    '<span class="hl">' + fmt(o.powerKw, 2) + ' кВт</span> · ' +
+    'энергоэффективность <span class="hl">' + fmt(jth, 1) + ' J/TH</span><br>' +
+    'Вложения: <span class="hl">' + fmt(o.capexRub, 0) + ' ₽</span> (~$' + fmtEn(capexUsd, 0) + ')' +
+    '<div class="note">Потребление: ' + fmt(base.kwhMonth, 0) + ' кВт·ч/мес → ' + fmt(base.elecRub, 0) + ' ₽/мес за электричество</div>';
+
+  // --- Вердикт ---
+  const pb = roiPaybackText(base.payback, o.horizon);
+  const totalProfit = base.rows[base.rows.length - 1].cum;
+  const pbOpt = roiPaybackText(optimistic.payback, o.horizon);
+  const pbPess = roiPaybackText(pessimistic.payback, o.horizon);
+  let verdictColor, verdictIcon, verdictText;
+  if (base.payback === null) {
+    const recovered = o.capexRub > 0 ? ((totalProfit + o.capexRub) / o.capexRub) * 100 : 0;
+    verdictColor = 'var(--red)'; verdictIcon = '⛔';
+    verdictText = 'При этих вводных аппарат не окупается за ' + o.horizon + ' мес — вернётся только ' +
+      fmt(Math.max(0, recovered), 0) + '% вложений. Нужна цена BTC выше, тариф ниже или аппарат дешевле.';
+  } else if (base.payback <= 12) {
+    verdictColor = 'var(--green)'; verdictIcon = '✅';
+    verdictText = 'Отличная сделка — окупаемость меньше года.';
+  } else if (base.payback <= 24) {
+    verdictColor = 'var(--accent)'; verdictIcon = '⚠️';
+    verdictText = 'Рабочий вариант, но окупаемость больше года — риск по сложности сети.';
+  } else {
+    verdictColor = 'var(--red)'; verdictIcon = '🔻';
+    verdictText = 'Долго. За такой срок сложность и износ съедят большую часть прибыли.';
+  }
+  const paybackDate = base.payback === null ? '—' : (() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + Math.ceil(base.payback));
+    return d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  })();
+
+  document.getElementById('roi_verdict').innerHTML =
+    '<div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">' +
+      '<div style="font-size:38px;line-height:1">' + verdictIcon + '</div>' +
+      '<div style="flex:1;min-width:220px">' +
+        '<div style="font-size:26px;font-weight:700;color:' + verdictColor + ';font-variant-numeric:tabular-nums">' + pb.text + '</div>' +
+        '<div style="font-size:13px;color:var(--text2);margin-top:4px">' + verdictText + '</div>' +
+        '<div style="font-size:12px;color:var(--text3);margin-top:6px">Выход в плюс примерно: <b style="color:var(--text2)">' + paybackDate + '</b> · ' +
+        'За ' + o.horizon + ' мес: <b style="color:' + (totalProfit >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmt(totalProfit, 0) + ' ₽</b></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+        '<div class="compare-card"><h4>Оптимистично</h4><div class="compare-num">' + pbOpt.text + '</div><div class="compare-sub">рост сложности ' + fmt(o.diffGrow * 50, 1) + '%/мес</div></div>' +
+        '<div class="compare-card"><h4>Пессимистично</h4><div class="compare-num">' + pbPess.text + '</div><div class="compare-sub">рост сложности ' + fmt(o.diffGrow * 200, 1) + '%/мес</div></div>' +
+      '</div>' +
+    '</div>';
+
+  // --- Карточки первого месяца ---
+  const costPerBtcUsd = first.netBtc > 0 ? monthCostUsd / first.netBtc : Infinity;
+  const marginPct = first.revenueRub > 0 ? (first.profitRub / first.revenueRub) * 100 : 0;
+  const roiAnnual = o.capexRub > 0 ? (first.profitRub * 12 / o.capexRub) * 100 : 0;
+  const hashpriceNet = o.hashrateTotal > 0
+    ? (first.grossBtc * o.btcPrice) / o.hashrateTotal / ROI_DAYS : 0;
+
+  const cards = [
+    { label: 'Добыча в месяц', value: first.netBtc.toFixed(5) + ' BTC', cls: 'accent' },
+    { label: 'Доход', value: fmt(first.revenueRub, 0) + ' ₽', cls: 'pos' },
+    { label: 'Электричество', value: fmt(base.elecRub, 0) + ' ₽', cls: 'neg' },
+    { label: 'Чистыми в месяц', value: fmt(first.profitRub, 0) + ' ₽', cls: first.profitRub >= 0 ? 'pos' : 'neg' },
+    { label: 'Окупаемость', value: pb.text, cls: pb.cls },
+    { label: 'ROI годовых', value: fmt(roiAnnual, 1) + ' %', cls: roiAnnual >= 0 ? 'pos' : 'neg' },
+    { label: 'Себестоимость 1 BTC', value: isFinite(costPerBtcUsd) ? '$' + fmtEn(costPerBtcUsd, 0) : '—', cls: costPerBtcUsd < o.btcPrice ? 'pos' : 'neg' },
+    { label: 'Маржа майнинга', value: fmt(marginPct, 1) + ' %', cls: marginPct >= 0 ? 'pos' : 'neg' },
+    { label: 'Энергоэффективность', value: fmt(jth, 1) + ' J/TH', cls: jth <= 20 ? 'pos' : (jth <= 30 ? 'accent' : 'neg') },
+    { label: 'Hashprice', value: '$' + fmtEn(hashpriceNet, 3) + '/TH/день', cls: 'blue' },
+  ];
+  document.getElementById('roi_cards').innerHTML = cards.map(c =>
+    '<div class="metric-card"><div class="metric-label">' + c.label + '</div>' +
+    '<div class="metric-value ' + c.cls + '">' + c.value + '</div></div>'
+  ).join('');
+
+  // --- Запас прочности ---
+  const bePriceUsd = first.netBtc > 0 ? monthCostRub / (first.netBtc * o.usdRub) : Infinity;
+  const beTariff = base.kwhMonth > 0 ? (first.revenueRub - o.otherRub) / base.kwhMonth : 0;
+  const beDiff = monthCostRub > 0 ? o.diff0 * (first.revenueRub / monthCostRub) : Infinity;
+  const priceMarginPct = o.btcPrice > 0 ? ((o.btcPrice - bePriceUsd) / o.btcPrice) * 100 : 0;
+
+  document.getElementById('roi_breakeven').innerHTML =
+    '<div class="compare-card' + (priceMarginPct > 30 ? ' highlight' : '') + '">' +
+      '<h4>Цена BTC в ноль</h4>' +
+      '<div class="compare-num">$' + fmtEn(bePriceUsd, 0) + '</div>' +
+      '<div class="compare-sub">сейчас $' + fmtEn(o.btcPrice, 0) + '</div>' +
+      '<span class="badge ' + (priceMarginPct > 30 ? 'badge-green' : priceMarginPct > 0 ? 'badge-amber' : 'badge-red') + '">запас ' + fmt(priceMarginPct, 0) + '%</span>' +
+    '</div>' +
+    '<div class="compare-card">' +
+      '<h4>Тариф в ноль</h4>' +
+      '<div class="compare-num">' + fmt(beTariff, 2) + ' ₽/кВт·ч</div>' +
+      '<div class="compare-sub">сейчас ' + fmt(o.tariff, 2) + ' ₽/кВт·ч</div>' +
+      '<span class="badge ' + (beTariff > o.tariff ? 'badge-green' : 'badge-red') + '">×' + fmt(o.tariff > 0 ? beTariff / o.tariff : 0, 1) + ' от текущего</span>' +
+    '</div>' +
+    '<div class="compare-card">' +
+      '<h4>Сложность в ноль</h4>' +
+      '<div class="compare-num">' + fmt(beDiff, 0) + ' T</div>' +
+      '<div class="compare-sub">сейчас ' + fmt(o.diff0, 1) + ' T</div>' +
+      '<span class="badge badge-blue">+' + fmt(o.diff0 > 0 ? (beDiff / o.diff0 - 1) * 100 : 0, 0) + '% роста</span>' +
+    '</div>' +
+    '<div class="compare-card">' +
+      '<h4>Стоимость за 1 TH/s</h4>' +
+      '<div class="compare-num">$' + fmtEn(o.hashrateTotal > 0 ? capexUsd / o.hashrateTotal : 0, 1) + '</div>' +
+      '<div class="compare-sub">капзатраты на единицу мощности</div>' +
+    '</div>';
+
+  // --- График накопленного кэшфлоу ---
+  const labels = base.cumSeries.map((_, i) => i === 0 ? 'старт' : i + ' мес');
+  const toK = arr => arr.map(v => v / 1000);
+  const ctx = document.getElementById('roi_chart');
+  if (_roiChart) _roiChart.destroy();
+  const roiOpts = chartOpts(
+    v => fmt(v, 0) + 'к',
+    c => c.dataset.label + ': ' + fmt(c.parsed.y, 0) + 'к ₽'
+  );
+  roiOpts.scales.x.ticks.maxTicksLimit = 13;
+  roiOpts.scales.x.ticks.autoSkip = true;
+  roiOpts.interaction = { mode: 'index', intersect: false };
+  _roiChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Оптимистичный', data: toK(optimistic.cumSeries), borderColor: '#1db97a', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.25 },
+        { label: 'Базовый',       data: toK(base.cumSeries),       borderColor: '#4a90e2', backgroundColor: 'rgba(74,144,226,0.08)', borderWidth: 2.5, fill: true, pointRadius: 0, tension: 0.25 },
+        { label: 'Пессимистичный',data: toK(pessimistic.cumSeries),borderColor: '#e2544b', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.25 },
+      ]
+    },
+    options: roiOpts
+  });
+
+  // --- Помесячная таблица ---
+  document.getElementById('roi_tbody').innerHTML = base.rows.map(r =>
+    '<tr' + (r.cum >= 0 && (r.m === 1 || base.rows[r.m-2].cum < 0) ? ' style="background:rgba(29,185,122,0.08)"' : '') + '>' +
+      '<td>' + r.m + '</td>' +
+      '<td>' + fmt(r.diff, 1) + '</td>' +
+      '<td>' + r.netBtc.toFixed(5) + '</td>' +
+      '<td>' + fmt(r.revenueRub, 0) + '</td>' +
+      '<td>' + fmt(r.elecRub + r.otherRub, 0) + '</td>' +
+      '<td style="color:' + (r.profitRub >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmt(r.profitRub, 0) + '</td>' +
+      '<td style="color:' + (r.cum >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmt(r.cum, 0) + '</td>' +
+    '</tr>'
+  ).join('');
+
+  roiSaveState();
+}
+
+// Рыночные поля не считаются пользовательской настройкой: пока их не трогали руками,
+// они всегда отражают свежие live-данные.
+const ROI_MARKET_FIELDS = ['roi_btc', 'roi_usdrub', 'roi_diff'];
+let _roiMarketTouched = false;
+
+function roiApplyLiveData() {
+  const btc = currentBtcPriceUsd();
+  const rub = currentUsdRub();
+  const diff = window._liveDifficulty || +document.getElementById('difficulty').value;
+  if (btc > 1000) document.getElementById('roi_btc').value = Math.round(btc);
+  if (rub > 10) document.getElementById('roi_usdrub').value = rub.toFixed(2);
+  if (diff > 1) document.getElementById('roi_diff').value = (+diff).toFixed(1);
+}
+
+function roiOnLiveData() {
+  if (_roiMarketTouched) return;
+  if (!document.getElementById('roi_btc')) return;
+  roiApplyLiveData();
+  if (document.getElementById('tab-roi').classList.contains('active')) renderRoi();
+}
+
+function roiInit() {
+  const sel = document.getElementById('roi_preset');
+  if (!sel) return;
+  sel.innerHTML = ASIC_PRESETS.map(p => '<option value="' + p.id + '">' + p.name + '</option>').join('');
+
+  const saved = roiLoadState();
+  const state = { ...ROI_DEFAULTS, ...(saved || {}) };
+  Object.keys(ROI_FIELDS).forEach(id => {
+    if (ROI_MARKET_FIELDS.includes(id)) return;
+    const key = ROI_FIELDS[id];
+    const el = document.getElementById(id);
+    if (el && state[key] !== undefined && state[key] !== null && state[key] !== '') el.value = state[key];
+  });
+  roiApplyLiveData();
+
+  ROI_MARKET_FIELDS.forEach(id => {
+    document.getElementById(id).addEventListener('input', () => { _roiMarketTouched = true; });
+  });
+
+  sel.addEventListener('change', () => {
+    const p = ASIC_PRESETS.find(x => x.id === sel.value);
+    if (p && p.th) {
+      document.getElementById('roi_hashrate').value = p.th;
+      document.getElementById('roi_power').value = p.w;
+    }
+    renderRoi();
+  });
+
+  const locSel = document.getElementById('roi_loc_preset');
+  locSel.addEventListener('change', () => {
+    const p = ROI_LOC_PRESETS[locSel.value];
+    if (p) {
+      document.getElementById('roi_tariff').value = p.tariff;
+      document.getElementById('roi_partner').value = p.partner;
+    }
+    renderRoi();
+  });
+
+  Object.keys(ROI_FIELDS).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || id === 'roi_preset' || id === 'roi_loc_preset') return;
+    el.addEventListener('input', renderRoi);
+    el.addEventListener('change', renderRoi);
+  });
+
+  document.getElementById('roi_use_live').addEventListener('click', () => {
+    _roiMarketTouched = false;
+    roiApplyLiveData();
+    renderRoi();
+  });
+
+  document.getElementById('roi_reset').addEventListener('click', () => {
+    try { localStorage.removeItem(ROI_STORAGE_KEY); } catch(e) {}
+    _roiMarketTouched = false;
+    Object.keys(ROI_FIELDS).forEach(id => {
+      const key = ROI_FIELDS[id];
+      const el = document.getElementById(id);
+      if (el && ROI_DEFAULTS[key] !== undefined) el.value = ROI_DEFAULTS[key];
+    });
+    document.getElementById('roi_preset').value = ROI_DEFAULTS.preset;
+    roiApplyLiveData();
+    renderRoi();
+  });
+}
+
+roiInit();
 
 </script>
 </body>
