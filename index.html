@@ -138,6 +138,7 @@
   .btn:hover { background: var(--bg4); }
   .btn.primary { background: var(--accent); color: #0f1117; border-color: var(--accent); }
   .btn.primary:hover { background: #ffa733; }
+  a.btn { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
   .btn.danger { background: transparent; color: var(--red); border-color: rgba(226,84,75,0.3); }
   .btn.danger:hover { background: var(--red-dim); }
   .btn.small { padding: 4px 10px; font-size: 12px; }
@@ -556,7 +557,7 @@
   @media (max-width: 640px) {
     .actions-bar { gap: 6px; }
     .actions-bar .spacer { display: none; }
-    .actions-bar > button {
+    .actions-bar > button, .actions-bar > a.btn {
       padding: 8px 11px;
       font-size: 12px;
       flex: 1 1 calc(50% - 6px);
@@ -1238,6 +1239,11 @@
 
   <!-- TAB 4: ROI нового аппарата -->
   <div class="tab-section" id="tab-roi">
+
+    <div class="actions-bar section-gap">
+      <a class="btn" href="difficulty.html" target="_blank" rel="noopener">📉 Монитор сложности сети</a>
+      <span style="font-size:12px;color:var(--text3)">живые данные mempool.space, прогноз следующей корректировки</span>
+    </div>
 
     <div class="formula-box section-gap">
       Окупаемость = <span class="hl">цена аппарата ÷ чистая прибыль в месяц</span>, но с поправкой на <span class="hl">рост сложности сети</span> — каждый месяц один и тот же аппарат добывает меньше BTC.

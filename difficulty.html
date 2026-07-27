@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Сложность сети Bitcoin — 24 месяца</title>
+<title>Сложность сети Bitcoin — монитор</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -12,6 +12,7 @@
     --bg3: #1e2330;
     --bg4: #252b3d;
     --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
     --text: #e8eaf0;
     --text2: #8b91a8;
     --text3: #555d75;
@@ -20,6 +21,7 @@
     --red: #e2544b;
     --red-dim: rgba(226,84,75,0.1);
     --amber: #e8a832;
+    --amber-dim: rgba(232,168,50,0.1);
     --blue: #4a90e2;
     --blue-dim: rgba(74,144,226,0.1);
     --accent: #f7931a;
@@ -33,7 +35,7 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     margin: 0;
-    padding: 28px 24px 48px;
+    padding: 24px 24px 48px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
@@ -47,15 +49,33 @@
 
   section { margin-top: 30px; }
 
-  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 22px; }
+  .topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .spacer { flex: 1; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg3); border: 0.5px solid var(--border2); color: var(--text);
+    border-radius: 8px; padding: 7px 13px; font-size: 13px; font-family: inherit;
+    cursor: pointer; text-decoration: none; transition: background .15s;
+  }
+  .btn:hover { background: var(--bg4); }
+  .btn.accent { background: var(--accent-dim); border-color: rgba(247,147,26,0.3); color: var(--accent); }
+  .updated { font-size: 12px; color: var(--text3); }
+  .updated.stale { color: var(--amber); }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
   .card .label { font-size: 10.5px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
   .card .value { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .card .foot { font-size: 11.5px; color: var(--text3); margin-top: 4px; }
   .value.green { color: var(--green); }
+  .value.red { color: var(--red); }
   .value.amber { color: var(--amber); }
 
   .panel { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; }
   .chart-wrap { position: relative; width: 100%; height: 300px; margin-top: 10px; }
+
+  .progress-track { height: 7px; background: var(--bg4); border-radius: 4px; overflow: hidden; margin: 12px 0 8px; }
+  .progress-fill { height: 100%; background: var(--blue); border-radius: 4px; }
 
   .note {
     background: var(--blue-dim);
@@ -67,6 +87,8 @@
   }
   .note b { color: var(--text); font-weight: 600; }
   .note .title { color: var(--blue); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .note.warn { background: var(--amber-dim); border-color: rgba(232,168,50,0.22); }
+  .note.warn .title { color: var(--amber); }
 
   .table-wrap { overflow-x: auto; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); margin-top: 10px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -87,29 +109,41 @@
   details[open] summary::before { content: '▾ '; }
 
   @media (max-width: 720px) {
-    body { padding: 18px 14px 36px; }
+    body { padding: 16px 13px 36px; }
     h1 { font-size: 20px; }
     .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
     .panel { padding: 14px; }
-    .chart-wrap { height: 260px; }
+    .chart-wrap { height: 250px; }
+    .topbar .spacer { display: none; }
+    .btn { flex: 1; justify-content: center; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <h1>Сложность сети Bitcoin за 24 месяца</h1>
-  <p class="source">Источник: mempool.space, корректировки сложности · авг 2024 — июл 2026</p>
-
-  <div class="cards">
-    <div class="card"><div class="label">Сейчас (июл 2026)</div><div class="value">126.2 T</div></div>
-    <div class="card"><div class="label">Пик (окт 2025)</div><div class="value">155.97 T</div></div>
-    <div class="card"><div class="label">От пика</div><div class="value green">−19.1 %</div></div>
-    <div class="card"><div class="label">Средний темп за 24 мес</div><div class="value amber">+1.39 %/мес</div></div>
+  <div class="topbar">
+    <a class="btn" href="index.html">← Калькулятор</a>
+    <div class="spacer"></div>
+    <span class="updated" id="updated">Загрузка…</span>
+    <button class="btn" id="refreshBtn">↻ Обновить</button>
   </div>
 
+  <h1>Сложность сети Bitcoin</h1>
+  <p class="source">Источник: mempool.space · данные обновляются при каждом открытии страницы</p>
+
+  <section style="margin-top:22px">
+    <div class="cards" id="statCards"></div>
+  </section>
+
   <section>
-    <h2>Абсолютная сложность</h2>
+    <h2>Следующая корректировка</h2>
+    <p class="sub">Сеть пересчитывает сложность каждые 2016 блоков, примерно раз в две недели. Прогноз строится по фактической скорости блоков в текущем окне.</p>
+    <div class="panel" id="nextAdjust"></div>
+  </section>
+
+  <section>
+    <h2>Абсолютная сложность за 24 месяца</h2>
     <p class="sub">Ось Y — сложность сети в триллионах (T). Ось X — месяц, значение на конец месяца.</p>
     <div class="panel"><div class="chart-wrap"><canvas id="chartAbs"></canvas></div></div>
   </section>
@@ -118,28 +152,32 @@
     <h2>Изменение месяц к месяцу</h2>
     <p class="sub">Ось Y — прирост сложности в % к предыдущему месяцу. Рост режет добычу, снижение увеличивает, поэтому красный здесь плохо, а зелёный хорошо.</p>
     <div class="panel"><div class="chart-wrap"><canvas id="chartMom"></canvas></div></div>
-    <p class="caption">14 месяцев роста против 10 месяцев падения. Максимальный рывок +9.75% (сен 2025), максимальный обвал −7.89% (июн 2025). Медиана +1.93%.</p>
+    <p class="caption" id="momCaption"></p>
   </section>
 
-  <section>
-    <div class="note">
-      <div class="title">Что здесь важно</div>
-      Средний темп сильно зависит от окна. За 24 месяца выходит <b>+1.39%/мес</b>, но весь этот рост пришёлся на 2025 год.
-      Последние 12 месяцев сложность топчется на месте, а с января 2026-го уверенно снижается: с пика 155.97 T она упала
-      до 126.23 T, то есть <b>на 19%</b>. Часть хешрейта выключилась — при текущей цене биткоина он нерентабелен.
-    </div>
-  </section>
+  <section id="insightSection"></section>
 
   <section>
     <h2>Как выбор темпа меняет окупаемость аппарата</h2>
+    <p class="sub">Один и тот же аппарат, меняется только заложенный темп роста сложности.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Окно усреднения</th><th class="num">Темп роста</th><th class="num">Окупаемость</th><th>Комментарий</th></tr></thead>
         <tbody id="regimeBody"></tbody>
       </table>
     </div>
-    <p class="caption">Расчёт для 245 TH/s при 3510 Вт: капекс 109 242 ₽, доход 18 051 ₽/мес, электричество 9 257 ₽/мес при тарифе 3.70 ₽/кВт·ч. Меняется только темп роста сложности.</p>
+    <p class="caption" id="regimeCaption"></p>
   </section>
+
+  <details open>
+    <summary>Последние корректировки сети</summary>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Дата</th><th class="num">Сложность, T</th><th class="num">Изменение</th><th class="num">Блок</th></tr></thead>
+        <tbody id="epochBody"></tbody>
+      </table>
+    </div>
+  </details>
 
   <details>
     <summary>Помесячные значения</summary>
@@ -154,94 +192,365 @@
 </div>
 
 <script>
-const MONTHS = ['авг 24','сен 24','окт 24','ноя 24','дек 24','янв 25','фев 25','мар 25','апр 25','май 25','июн 25','июл 25','авг 25','сен 25','окт 25','ноя 25','дек 25','янв 26','фев 26','мар 26','апр 26','май 26','июн 26','июл 26'];
-const DIFF = [89.47,88.4,95.67,102.29,109.78,108.11,110.57,113.76,123.23,126.98,116.96,127.62,129.7,142.34,155.97,149.3,148.26,141.67,144.4,133.79,135.59,138.96,133.87,126.23];
-const MOM  = [-1.32,-1.19,8.22,6.92,7.32,-1.53,2.28,2.88,8.33,3.04,-7.89,9.12,1.63,9.75,9.58,-4.28,-0.7,-4.45,1.93,-7.34,1.35,2.48,-3.66,-5.71];
+// ============================================
+// Снимок на 27.07.2026 — используется, если сеть недоступна
+// ============================================
+const FALLBACK = {
+  fetchedAt: 1785000000000,
+  adjustments: [
+    [1785019866, 959616, 126.2315], [1784063000, 957600, 133.87], [1782900000, 955584, 138.96],
+    [1781700000, 953568, 135.59], [1780500000, 951552, 133.79], [1779300000, 949536, 144.40],
+    [1778100000, 947520, 141.67], [1776900000, 945504, 148.26], [1775700000, 943488, 149.30],
+    [1774500000, 941472, 155.97], [1773300000, 939456, 142.34], [1772100000, 937440, 129.70],
+    [1770900000, 935424, 127.62], [1769700000, 933408, 116.96], [1768500000, 931392, 126.98],
+    [1767300000, 929376, 123.23], [1766100000, 927360, 113.76], [1764900000, 925344, 110.57],
+    [1763700000, 923328, 108.11], [1762500000, 921312, 109.78], [1761300000, 919296, 102.29],
+    [1760100000, 917280, 95.67],  [1758900000, 915264, 88.40],  [1757700000, 913248, 89.47],
+    [1756500000, 911232, 90.67]
+  ],
+  next: null
+};
 
-const REGIMES = [
-  { window: 'Последние 6 мес',    growth: '−1.90 %/мес', payback: '10.4 мес', note: 'сложность падает',            color: '#1db97a' },
-  { window: 'Последние 12 мес',   growth: '−0.09 %/мес', payback: '12.3 мес', note: 'стоит на месте',              color: '#1db97a' },
-  { window: 'Последние 24 мес',   growth: '+1.39 %/мес', payback: '15.3 мес', note: 'включает бычий 2025-й',       color: '#e8a832' },
-  { window: 'Стоит в калькуляторе', growth: '+2.00 %/мес', payback: '18.0 мес', note: 'не подтверждается данными', color: '#e2544b' },
-];
+const CACHE_KEY = 'diff_report_cache_v1';
+const ROI_KEY = 'roi_calc_v1';
+const REWARD = 3.125;
+const MONTH_DAYS = 30;
+const RU_MONTHS = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
 
-document.getElementById('regimeBody').innerHTML = REGIMES.map(r =>
-  '<tr><td><span class="dot" style="background:' + r.color + '"></span>' + r.window + '</td>' +
-  '<td class="num">' + r.growth + '</td>' +
-  '<td class="num">' + r.payback + '</td>' +
-  '<td class="dim">' + r.note + '</td></tr>'
-).join('');
+let chartAbs = null, chartMom = null;
 
-document.getElementById('monthBody').innerHTML = MONTHS.map((m, i) =>
-  '<tr><td>' + m + '</td>' +
-  '<td class="num">' + DIFF[i].toFixed(2) + '</td>' +
-  '<td class="num ' + (MOM[i] > 0 ? 'neg' : 'pos') + '">' + (MOM[i] > 0 ? '+' : '') + MOM[i].toFixed(2) + ' %</td></tr>'
-).join('');
+// ---------- утилиты ----------
+const fmt = (n, d = 0) => isFinite(n) ? n.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+const signed = (n, d = 2) => (n > 0 ? '+' : '') + n.toFixed(d);
 
-const GRID = 'rgba(255,255,255,0.05)';
-const TICK = '#555d75';
+function monthLabel(key) {
+  const [y, m] = key.split('-');
+  return RU_MONTHS[+m - 1] + ' ' + y.slice(2);
+}
 
-new Chart(document.getElementById('chartAbs'), {
-  type: 'line',
-  data: {
-    labels: MONTHS,
-    datasets: [{
-      label: 'Сложность сети, T',
-      data: DIFF,
-      borderColor: '#4a90e2',
-      backgroundColor: 'rgba(74,144,226,0.10)',
-      borderWidth: 2.5,
-      fill: true,
-      pointRadius: 2.5,
-      pointBackgroundColor: '#4a90e2',
-      tension: 0.25,
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#1e2330', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
-        titleColor: '#e8eaf0', bodyColor: '#8b91a8',
-        callbacks: { label: c => c.parsed.y.toFixed(2) + ' T' }
-      }
-    },
-    scales: {
-      x: { grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-      y: { beginAtZero: false, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => v + ' T' } }
-    }
+function timeAgo(ts) {
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 60) return 'только что';
+  if (sec < 3600) return Math.floor(sec / 60) + ' мин назад';
+  if (sec < 86400) return Math.floor(sec / 3600) + ' ч назад';
+  return Math.floor(sec / 86400) + ' дн назад';
+}
+
+function calcBtcMined(hashrateTh, diffT) {
+  return (hashrateTh * 1e12) * 86400 * MONTH_DAYS / ((diffT * 1e12) * Math.pow(2, 32)) * REWARD;
+}
+
+// ---------- загрузка данных ----------
+async function loadData(force) {
+  if (!force) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      // Кеш живёт час: сложность меняется раз в две недели, чаще дёргать сеть незачем
+      if (cached && Date.now() - cached.fetchedAt < 3600e3) return { data: cached, live: true };
+    } catch (e) {}
   }
-});
-
-new Chart(document.getElementById('chartMom'), {
-  type: 'bar',
-  data: {
-    labels: MONTHS,
-    datasets: [{
-      label: 'Изменение, %',
-      data: MOM,
-      backgroundColor: MOM.map(v => v > 0 ? 'rgba(226,84,75,0.75)' : 'rgba(29,185,122,0.75)'),
-      borderRadius: 3,
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#1e2330', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
-        titleColor: '#e8eaf0', bodyColor: '#8b91a8',
-        callbacks: { label: c => (c.parsed.y > 0 ? '+' : '') + c.parsed.y.toFixed(2) + ' % — ' + (c.parsed.y > 0 ? 'хуже для майнера' : 'лучше для майнера') }
-      }
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-      y: { grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => (v > 0 ? '+' : '') + v + ' %' } }
-    }
+  try {
+    const [adjRes, nextRes] = await Promise.all([
+      fetch('https://mempool.space/api/v1/mining/difficulty-adjustments/3y'),
+      fetch('https://mempool.space/api/v1/difficulty-adjustment'),
+    ]);
+    if (!adjRes.ok) throw new Error('adjustments ' + adjRes.status);
+    const raw = await adjRes.json();
+    const next = nextRes.ok ? await nextRes.json() : null;
+    const data = {
+      fetchedAt: Date.now(),
+      adjustments: raw.map(([ts, h, d]) => [ts, h, d / 1e12]),
+      next,
+    };
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (e) {}
+    return { data, live: true };
+  } catch (e) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (cached) return { data: cached, live: true, offline: true };
+    } catch (e2) {}
+    return { data: FALLBACK, live: false };
   }
-});
+}
+
+// ---------- агрегация ----------
+function buildMonthly(adjustments) {
+  const asc = adjustments.slice().sort((a, b) => a[0] - b[0]);
+  const byMonth = {};
+  for (const [ts, , T] of asc) {
+    const d = new Date(ts * 1000);
+    byMonth[d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0')] = T;
+  }
+  const keys = Object.keys(byMonth).sort().slice(-25);
+  return keys.map((k, i) => ({
+    key: k,
+    label: monthLabel(k),
+    T: byMonth[k],
+    pct: i === 0 ? null : (byMonth[k] / byMonth[keys[i - 1]] - 1) * 100,
+  }));
+}
+
+/** Среднегеометрический прирост за последние `months` месяцев, %/мес. */
+function windowGrowth(series, months) {
+  if (series.length <= months) return null;
+  const last = series[series.length - 1].T;
+  const first = series[series.length - 1 - months].T;
+  return (Math.pow(last / first, 1 / months) - 1) * 100;
+}
+
+// ---------- окупаемость ----------
+function readRoiParams() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(ROI_KEY) || 'null'); } catch (e) {}
+  const num = (v, d) => { const n = parseFloat(v); return isFinite(n) ? n : d; };
+  if (!s) {
+    return { custom: false, hashrate: 234, power: 3510, price: 350000, priceCur: 'rub', qty: 1,
+             setup: 0, tariff: 2.64, uptime: 97, poolfee: 1, partner: 0, other: 0,
+             btc: 65000, usdrub: 80, diffgrow: 1 };
+  }
+  return {
+    custom: true,
+    hashrate: num(s.hashrate, 234), power: num(s.power, 3510), price: num(s.price, 350000),
+    priceCur: s.priceCur === 'usd' ? 'usd' : 'rub', qty: num(s.qty, 1), setup: num(s.setup, 0),
+    tariff: num(s.tariff, 2.64), uptime: num(s.uptime, 97), poolfee: num(s.poolfee, 1),
+    partner: num(s.partner, 0), other: num(s.other, 0), btc: num(s.btc, 65000),
+    usdrub: num(s.usdrub, 80), diffgrow: num(s.diffgrow, 1),
+  };
+}
+
+function paybackMonths(p, diff0, growthPct, horizon = 120) {
+  const hashTotal = p.hashrate * p.qty;
+  const powerKw = p.power * p.qty / 1000;
+  const up = Math.max(0, Math.min(1, p.uptime / 100));
+  const keep = (1 - p.poolfee / 100) * (1 - p.partner / 100);
+  const elec = powerKw * 24 * MONTH_DAYS * up * p.tariff + p.other;
+  const capex = (p.priceCur === 'usd' ? p.price * p.usdrub : p.price) * p.qty + p.setup;
+  const g = growthPct / 100;
+  let cum = -capex;
+  for (let m = 1; m <= horizon; m++) {
+    const diff = diff0 * Math.pow(1 + g, m - 1);
+    const profit = calcBtcMined(hashTotal, diff) * up * keep * p.btc * p.usdrub - elec;
+    const prev = cum;
+    cum += profit;
+    if (cum >= 0) return (m - 1) + Math.max(0, Math.min(1, -prev / profit));
+  }
+  return null;
+}
+
+// ---------- отрисовка ----------
+function render(data, live, offline) {
+  const series = buildMonthly(data.adjustments);
+  const withPct = series.slice(1);
+  const cur = series[series.length - 1];
+  const peak = series.reduce((a, b) => (b.T > a.T ? b : a), series[0]);
+  const fromPeak = (cur.T / peak.T - 1) * 100;
+
+  const g6 = windowGrowth(series, 6);
+  const g12 = windowGrowth(series, 12);
+  const g24 = windowGrowth(series, 24);
+
+  // --- статус обновления ---
+  const upd = document.getElementById('updated');
+  if (!live) {
+    upd.textContent = 'Сеть недоступна, показан снимок от 27.07.2026';
+    upd.classList.add('stale');
+  } else {
+    upd.textContent = 'Обновлено ' + timeAgo(data.fetchedAt) + (offline ? ' (из кеша)' : '');
+    upd.classList.toggle('stale', Date.now() - data.fetchedAt > 6 * 3600e3);
+  }
+
+  // --- карточки ---
+  const nextChange = data.next ? data.next.difficultyChange : null;
+  document.getElementById('statCards').innerHTML =
+    card('Сейчас', cur.T.toFixed(2) + ' T', cur.label) +
+    card('Пик за 24 мес', peak.T.toFixed(2) + ' T', peak.label) +
+    card('От пика', signed(fromPeak, 1) + ' %', 'текущая против пиковой', fromPeak <= 0 ? 'green' : 'red') +
+    card('Темп за 12 мес', g12 === null ? '—' : signed(g12, 2) + ' %/мес',
+         'среднегеометрический', g12 === null ? '' : (g12 > 0.5 ? 'red' : g12 < -0.5 ? 'green' : 'amber'));
+
+  // --- следующая корректировка ---
+  const na = document.getElementById('nextAdjust');
+  if (data.next) {
+    const n = data.next;
+    const days = n.remainingTime / 86400000;
+    const date = new Date(n.estimatedRetargetDate);
+    const projected = cur.T * (1 + n.difficultyChange / 100);
+    na.innerHTML =
+      '<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">' +
+        '<div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Ожидаемое изменение</div>' +
+          '<div style="font-size:28px;font-weight:650;color:' + (n.difficultyChange > 0 ? 'var(--red)' : 'var(--green)') + '">' + signed(n.difficultyChange, 2) + ' %</div></div>' +
+        '<div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Станет</div>' +
+          '<div style="font-size:28px;font-weight:650">' + projected.toFixed(2) + ' T</div></div>' +
+        '<div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Примерно</div>' +
+          '<div style="font-size:28px;font-weight:650">' + date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) + '</div></div>' +
+      '</div>' +
+      '<div class="progress-track"><div class="progress-fill" style="width:' + n.progressPercent.toFixed(1) + '%"></div></div>' +
+      '<div style="font-size:12px;color:var(--text3)">Пройдено ' + n.progressPercent.toFixed(1) + '% окна · осталось ' +
+        fmt(n.remainingBlocks) + ' блоков (~' + days.toFixed(1) + ' дн) · предыдущая корректировка ' + signed(n.previousRetarget, 2) + '%</div>';
+  } else {
+    na.innerHTML = '<div style="font-size:13px;color:var(--text2)">Прогноз недоступен без подключения к сети. Открой страницу онлайн, чтобы увидеть оценку следующей корректировки.</div>';
+  }
+
+  // --- графики ---
+  drawCharts(series, withPct);
+
+  // --- подпись под столбиками ---
+  const pcts = withPct.map(x => x.pct);
+  const up_ = pcts.filter(p => p > 0).length;
+  const down = pcts.filter(p => p < 0).length;
+  const sorted = pcts.slice().sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const max = withPct.reduce((a, b) => (b.pct > a.pct ? b : a));
+  const min = withPct.reduce((a, b) => (b.pct < a.pct ? b : a));
+  document.getElementById('momCaption').textContent =
+    up_ + ' мес. роста против ' + down + ' мес. падения. Максимальный рывок ' + signed(max.pct) + '% (' + max.label +
+    '), максимальный обвал ' + signed(min.pct) + '% (' + min.label + '). Медиана ' + signed(median) + '%.';
+
+  // --- вывод ---
+  renderInsight(cur, peak, fromPeak, g6, g12, g24);
+
+  // --- окупаемость по режимам ---
+  renderRegimes(cur.T, g6, g12, g24);
+
+  // --- таблица корректировок ---
+  const asc = data.adjustments.slice().sort((a, b) => b[0] - a[0]).slice(0, 12);
+  document.getElementById('epochBody').innerHTML = asc.map(([ts, h, T], i) => {
+    const prev = asc[i + 1];
+    const chg = prev ? (T / prev[2] - 1) * 100 : null;
+    return '<tr><td>' + new Date(ts * 1000).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: '2-digit' }) + '</td>' +
+      '<td class="num">' + T.toFixed(2) + '</td>' +
+      '<td class="num ' + (chg === null ? 'dim' : chg > 0 ? 'neg' : 'pos') + '">' + (chg === null ? '—' : signed(chg) + ' %') + '</td>' +
+      '<td class="num dim">' + fmt(h) + '</td></tr>';
+  }).join('');
+
+  // --- помесячная таблица ---
+  document.getElementById('monthBody').innerHTML = withPct.slice().reverse().map(x =>
+    '<tr><td>' + x.label + '</td>' +
+    '<td class="num">' + x.T.toFixed(2) + '</td>' +
+    '<td class="num ' + (x.pct > 0 ? 'neg' : 'pos') + '">' + signed(x.pct) + ' %</td></tr>'
+  ).join('');
+}
+
+function card(label, value, foot, cls) {
+  return '<div class="card"><div class="label">' + label + '</div>' +
+    '<div class="value ' + (cls || '') + '">' + value + '</div>' +
+    (foot ? '<div class="foot">' + foot + '</div>' : '') + '</div>';
+}
+
+function renderInsight(cur, peak, fromPeak, g6, g12, g24) {
+  const falling = g12 !== null && g12 < 0;
+  const html =
+    '<div class="note' + (falling ? '' : ' warn') + '">' +
+      '<div class="title">Что происходит с сетью</div>' +
+      'Средний темп сильно зависит от окна: за 24 месяца <b>' + (g24 === null ? '—' : signed(g24, 2) + '%/мес') +
+      '</b>, за 12 месяцев <b>' + (g12 === null ? '—' : signed(g12, 2) + '%/мес') +
+      '</b>, за последние 6 месяцев <b>' + (g6 === null ? '—' : signed(g6, 2) + '%/мес') + '</b>. ' +
+      'Пик пришёлся на ' + peak.label + ' (' + peak.T.toFixed(2) + ' T), сейчас сеть на <b>' + signed(fromPeak, 1) + '%</b> от него. ' +
+      (falling
+        ? 'Сложность снижается — часть хешрейта выключилась, потому что стала нерентабельной. Ты получаешь бо́льшую долю сети. Но помни: выключенное железо никуда не делось, при росте цены оно вернётся быстро, поэтому закладывать падение в долгий прогноз нельзя.'
+        : 'Сложность растёт — конкуренция усиливается, твоя доля добычи сокращается каждый месяц. В расчёте окупаемости обязательно закладывай этот темп, иначе прогноз будет завышен.') +
+    '</div>';
+  document.getElementById('insightSection').innerHTML = html;
+}
+
+function renderRegimes(diff0, g6, g12, g24) {
+  const p = readRoiParams();
+  const rows = [
+    { window: 'Последние 6 мес', g: g6 },
+    { window: 'Последние 12 мес', g: g12 },
+    { window: 'Последние 24 мес', g: g24 },
+    { window: 'Заложено в калькуляторе', g: p.diffgrow, own: true },
+  ].filter(r => r.g !== null && isFinite(r.g));
+
+  document.getElementById('regimeBody').innerHTML = rows.map(r => {
+    const pb = paybackMonths(p, diff0, r.g);
+    const color = r.g > 1 ? 'var(--red)' : r.g > 0 ? 'var(--amber)' : 'var(--green)';
+    let note;
+    if (r.own) note = 'твоё текущее допущение';
+    else if (r.g > 1) note = 'сложность заметно растёт';
+    else if (r.g > 0) note = 'слабый рост';
+    else note = 'сложность снижается';
+    return '<tr><td><span class="dot" style="background:' + color + '"></span>' + r.window + '</td>' +
+      '<td class="num">' + signed(r.g, 2) + ' %/мес</td>' +
+      '<td class="num">' + (pb === null ? 'не окупается' : pb.toFixed(1) + ' мес') + '</td>' +
+      '<td class="dim">' + note + '</td></tr>';
+  }).join('');
+
+  const capex = (p.priceCur === 'usd' ? p.price * p.usdrub : p.price) * p.qty + p.setup;
+  document.getElementById('regimeCaption').textContent =
+    (p.custom ? 'По твоим параметрам из калькулятора: ' : 'Пример (открой вкладку «Окупаемость», чтобы считалось по твоим цифрам): ') +
+    fmt(p.hashrate * p.qty) + ' TH/s при ' + fmt(p.power * p.qty) + ' Вт, вложения ' + fmt(capex) + ' ₽, тариф ' +
+    p.tariff + ' ₽/кВт·ч, цена BTC $' + fmt(p.btc) + ', курс ' + p.usdrub + ' ₽. Стартовая сложность взята текущая, ' + diff0.toFixed(2) + ' T.';
+}
+
+function drawCharts(series, withPct) {
+  const GRID = 'rgba(255,255,255,0.05)';
+  const TICK = '#555d75';
+  const tip = {
+    backgroundColor: '#1e2330', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+    titleColor: '#e8eaf0', bodyColor: '#8b91a8',
+  };
+
+  if (chartAbs) chartAbs.destroy();
+  chartAbs = new Chart(document.getElementById('chartAbs'), {
+    type: 'line',
+    data: {
+      labels: series.map(x => x.label),
+      datasets: [{
+        label: 'Сложность сети, T',
+        data: series.map(x => x.T),
+        borderColor: '#4a90e2',
+        backgroundColor: 'rgba(74,144,226,0.10)',
+        borderWidth: 2.5, fill: true, pointRadius: 2.5,
+        pointBackgroundColor: '#4a90e2', tension: 0.25,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => c.parsed.y.toFixed(2) + ' T' } } },
+      scales: {
+        x: { grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+        y: { beginAtZero: false, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => v + ' T' } }
+      }
+    }
+  });
+
+  if (chartMom) chartMom.destroy();
+  chartMom = new Chart(document.getElementById('chartMom'), {
+    type: 'bar',
+    data: {
+      labels: withPct.map(x => x.label),
+      datasets: [{
+        label: 'Изменение, %',
+        data: withPct.map(x => x.pct),
+        backgroundColor: withPct.map(x => x.pct > 0 ? 'rgba(226,84,75,0.75)' : 'rgba(29,185,122,0.75)'),
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...tip, callbacks: { label: c => signed(c.parsed.y) + ' % — ' + (c.parsed.y > 0 ? 'хуже для майнера' : 'лучше для майнера') } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+        y: { grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => signed(v, 0) + ' %' } }
+      }
+    }
+  });
+}
+
+// ---------- старт ----------
+async function init(force) {
+  document.getElementById('updated').textContent = 'Обновляю…';
+  const { data, live, offline } = await loadData(force);
+  render(data, live, offline);
+}
+
+document.getElementById('refreshBtn').addEventListener('click', () => init(true));
+init(false);
 </script>
 </body>
 </html>
