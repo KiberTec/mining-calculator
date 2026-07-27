@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сложность сети Bitcoin — 24 месяца</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #171b24;
+    --bg3: #1e2330;
+    --bg4: #252b3d;
+    --border: rgba(255,255,255,0.07);
+    --text: #e8eaf0;
+    --text2: #8b91a8;
+    --text3: #555d75;
+    --green: #1db97a;
+    --green-dim: rgba(29,185,122,0.12);
+    --red: #e2544b;
+    --red-dim: rgba(226,84,75,0.1);
+    --amber: #e8a832;
+    --blue: #4a90e2;
+    --blue-dim: rgba(74,144,226,0.1);
+    --accent: #f7931a;
+    --accent-dim: rgba(247,147,26,0.1);
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    margin: 0;
+    padding: 28px 24px 48px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  h1 { font-size: 25px; font-weight: 650; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+  .source { font-size: 12px; color: var(--text3); margin: 0; }
+  .sub { font-size: 12.5px; color: var(--text2); margin: 0 0 12px; }
+  .caption { font-size: 12px; color: var(--text3); margin: 10px 0 0; }
+
+  section { margin-top: 30px; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 22px; }
+  .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .card .label { font-size: 10.5px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+  .card .value { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .value.green { color: var(--green); }
+  .value.amber { color: var(--amber); }
+
+  .panel { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; }
+  .chart-wrap { position: relative; width: 100%; height: 300px; margin-top: 10px; }
+
+  .note {
+    background: var(--blue-dim);
+    border: 0.5px solid rgba(74,144,226,0.22);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    font-size: 13.5px;
+    color: var(--text2);
+  }
+  .note b { color: var(--text); font-weight: 600; }
+  .note .title { color: var(--blue); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+
+  .table-wrap { overflow-x: auto; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  thead { background: var(--bg4); }
+  th { text-align: left; padding: 10px 14px; font-weight: 600; color: var(--text2); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+  td { padding: 9px 14px; border-top: 0.5px solid var(--border); }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,0.014); }
+  .num { text-align: right; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .dim { color: var(--text2); }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+
+  details { margin-top: 30px; }
+  summary { cursor: pointer; font-size: 17px; font-weight: 600; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: '▸ '; color: var(--text3); }
+  details[open] summary::before { content: '▾ '; }
+
+  @media (max-width: 720px) {
+    body { padding: 18px 14px 36px; }
+    h1 { font-size: 20px; }
+    .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .panel { padding: 14px; }
+    .chart-wrap { height: 260px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Сложность сети Bitcoin за 24 месяца</h1>
+  <p class="source">Источник: mempool.space, корректировки сложности · авг 2024 — июл 2026</p>
+
+  <div class="cards">
+    <div class="card"><div class="label">Сейчас (июл 2026)</div><div class="value">126.2 T</div></div>
+    <div class="card"><div class="label">Пик (окт 2025)</div><div class="value">155.97 T</div></div>
+    <div class="card"><div class="label">От пика</div><div class="value green">−19.1 %</div></div>
+    <div class="card"><div class="label">Средний темп за 24 мес</div><div class="value amber">+1.39 %/мес</div></div>
+  </div>
+
+  <section>
+    <h2>Абсолютная сложность</h2>
+    <p class="sub">Ось Y — сложность сети в триллионах (T). Ось X — месяц, значение на конец месяца.</p>
+    <div class="panel"><div class="chart-wrap"><canvas id="chartAbs"></canvas></div></div>
+  </section>
+
+  <section>
+    <h2>Изменение месяц к месяцу</h2>
+    <p class="sub">Ось Y — прирост сложности в % к предыдущему месяцу. Рост режет добычу, снижение увеличивает, поэтому красный здесь плохо, а зелёный хорошо.</p>
+    <div class="panel"><div class="chart-wrap"><canvas id="chartMom"></canvas></div></div>
+    <p class="caption">14 месяцев роста против 10 месяцев падения. Максимальный рывок +9.75% (сен 2025), максимальный обвал −7.89% (июн 2025). Медиана +1.93%.</p>
+  </section>
+
+  <section>
+    <div class="note">
+      <div class="title">Что здесь важно</div>
+      Средний темп сильно зависит от окна. За 24 месяца выходит <b>+1.39%/мес</b>, но весь этот рост пришёлся на 2025 год.
+      Последние 12 месяцев сложность топчется на месте, а с января 2026-го уверенно снижается: с пика 155.97 T она упала
+      до 126.23 T, то есть <b>на 19%</b>. Часть хешрейта выключилась — при текущей цене биткоина он нерентабелен.
+    </div>
+  </section>
+
+  <section>
+    <h2>Как выбор темпа меняет окупаемость аппарата</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Окно усреднения</th><th class="num">Темп роста</th><th class="num">Окупаемость</th><th>Комментарий</th></tr></thead>
+        <tbody id="regimeBody"></tbody>
+      </table>
+    </div>
+    <p class="caption">Расчёт для 245 TH/s при 3510 Вт: капекс 109 242 ₽, доход 18 051 ₽/мес, электричество 9 257 ₽/мес при тарифе 3.70 ₽/кВт·ч. Меняется только темп роста сложности.</p>
+  </section>
+
+  <details>
+    <summary>Помесячные значения</summary>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Месяц</th><th class="num">Сложность, T</th><th class="num">К предыдущему</th></tr></thead>
+        <tbody id="monthBody"></tbody>
+      </table>
+    </div>
+  </details>
+
+</div>
+
+<script>
+const MONTHS = ['авг 24','сен 24','окт 24','ноя 24','дек 24','янв 25','фев 25','мар 25','апр 25','май 25','июн 25','июл 25','авг 25','сен 25','окт 25','ноя 25','дек 25','янв 26','фев 26','мар 26','апр 26','май 26','июн 26','июл 26'];
+const DIFF = [89.47,88.4,95.67,102.29,109.78,108.11,110.57,113.76,123.23,126.98,116.96,127.62,129.7,142.34,155.97,149.3,148.26,141.67,144.4,133.79,135.59,138.96,133.87,126.23];
+const MOM  = [-1.32,-1.19,8.22,6.92,7.32,-1.53,2.28,2.88,8.33,3.04,-7.89,9.12,1.63,9.75,9.58,-4.28,-0.7,-4.45,1.93,-7.34,1.35,2.48,-3.66,-5.71];
+
+const REGIMES = [
+  { window: 'Последние 6 мес',    growth: '−1.90 %/мес', payback: '10.4 мес', note: 'сложность падает',            color: '#1db97a' },
+  { window: 'Последние 12 мес',   growth: '−0.09 %/мес', payback: '12.3 мес', note: 'стоит на месте',              color: '#1db97a' },
+  { window: 'Последние 24 мес',   growth: '+1.39 %/мес', payback: '15.3 мес', note: 'включает бычий 2025-й',       color: '#e8a832' },
+  { window: 'Стоит в калькуляторе', growth: '+2.00 %/мес', payback: '18.0 мес', note: 'не подтверждается данными', color: '#e2544b' },
+];
+
+document.getElementById('regimeBody').innerHTML = REGIMES.map(r =>
+  '<tr><td><span class="dot" style="background:' + r.color + '"></span>' + r.window + '</td>' +
+  '<td class="num">' + r.growth + '</td>' +
+  '<td class="num">' + r.payback + '</td>' +
+  '<td class="dim">' + r.note + '</td></tr>'
+).join('');
+
+document.getElementById('monthBody').innerHTML = MONTHS.map((m, i) =>
+  '<tr><td>' + m + '</td>' +
+  '<td class="num">' + DIFF[i].toFixed(2) + '</td>' +
+  '<td class="num ' + (MOM[i] > 0 ? 'neg' : 'pos') + '">' + (MOM[i] > 0 ? '+' : '') + MOM[i].toFixed(2) + ' %</td></tr>'
+).join('');
+
+const GRID = 'rgba(255,255,255,0.05)';
+const TICK = '#555d75';
+
+new Chart(document.getElementById('chartAbs'), {
+  type: 'line',
+  data: {
+    labels: MONTHS,
+    datasets: [{
+      label: 'Сложность сети, T',
+      data: DIFF,
+      borderColor: '#4a90e2',
+      backgroundColor: 'rgba(74,144,226,0.10)',
+      borderWidth: 2.5,
+      fill: true,
+      pointRadius: 2.5,
+      pointBackgroundColor: '#4a90e2',
+      tension: 0.25,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1e2330', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+        titleColor: '#e8eaf0', bodyColor: '#8b91a8',
+        callbacks: { label: c => c.parsed.y.toFixed(2) + ' T' }
+      }
+    },
+    scales: {
+      x: { grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+      y: { beginAtZero: false, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => v + ' T' } }
+    }
+  }
+});
+
+new Chart(document.getElementById('chartMom'), {
+  type: 'bar',
+  data: {
+    labels: MONTHS,
+    datasets: [{
+      label: 'Изменение, %',
+      data: MOM,
+      backgroundColor: MOM.map(v => v > 0 ? 'rgba(226,84,75,0.75)' : 'rgba(29,185,122,0.75)'),
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1e2330', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+        titleColor: '#e8eaf0', bodyColor: '#8b91a8',
+        callbacks: { label: c => (c.parsed.y > 0 ? '+' : '') + c.parsed.y.toFixed(2) + ' % — ' + (c.parsed.y > 0 ? 'хуже для майнера' : 'лучше для майнера') }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+      y: { grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => (v > 0 ? '+' : '') + v + ' %' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
