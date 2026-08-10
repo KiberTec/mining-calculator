@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-10T05:26:43.226Z",
+  "updatedAt": "2026-08-10T05:27:04.377Z",
   "journals": {
     "D": [
       {
@@ -142,7 +142,7 @@
         "difficulty": 126.23,
         "btcMined": 0.26693,
         "btcSold": 0.17,
-        "salePrice": 65000,
+        "salePrice": 59000,
         "usdRub": 79
       }
     ]
