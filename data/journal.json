@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-10T05:09:13.270Z",
+  "updatedAt": "2026-08-10T05:15:07.201Z",
   "journals": {
     "D": [
       {
@@ -116,6 +116,20 @@
         "btcSold": 0.03,
         "salePrice": 65000,
         "usdRub": 79
+      },
+      {
+        "id": 1786338905320,
+        "month": "2026-07",
+        "location": "dema",
+        "btcGiven": 0,
+        "kwh": 63557,
+        "rubElec": 223950,
+        "hashrate": 4000,
+        "difficulty": 126.23,
+        "btcMined": 0.05924,
+        "btcSold": 0,
+        "salePrice": 65000,
+        "usdRub": 87
       }
     ]
   },
