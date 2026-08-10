@@ -347,7 +347,6 @@
   .field input:focus, .field select:focus { border-color: var(--accent); }
   @media (max-width: 640px) {
     .field input, .field select { font-size: 16px; padding: 10px 12px; }
-    .split-helper input { font-size: 16px !important; padding: 8px 10px !important; }
     .gh-password-input { font-size: 16px; }
     .slider-val-input { font-size: 14px; }
   }
@@ -473,22 +472,6 @@
 
   .field input::placeholder { color: var(--text3); }
   .field .hint { font-size: 11px; color: var(--text3); margin-top: 2px; }
-
-  .split-helper {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    margin-top: 5px;
-    font-size: 11px;
-    color: var(--text3);
-  }
-  .split-helper input {
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 5px 7px !important;
-    font-size: 11px !important;
-    background: var(--bg2) !important;
-  }
 
   .form-actions {
     display: flex;
@@ -1107,13 +1090,6 @@
         <div class="field">
           <label>Доп. расходы, ₽</label>
           <input type="number" id="f_otherRub" placeholder="11250" min="0" step="100" value="0">
-          <div class="split-helper">
-            <span>делим:</span>
-            <input type="number" id="f_otherTotal" placeholder="15000" min="0" step="100">
-            <span>₽ ×</span>
-            <input type="number" id="f_otherShare" placeholder="75" min="0" max="100" step="1">
-            <span>%</span>
-          </div>
           <span class="hint">аренда, ремонты, обслуживание — твоя доля</span>
         </div>
         <div class="field">
@@ -2261,7 +2237,6 @@ function openForm(entry = null) {
     document.getElementById('f_kwh').value        = document.getElementById('c_elec_kwh').value;
     document.getElementById('f_rubElec').value    = '';
     document.getElementById('f_otherRub').dataset.userEdited = '';
-    document.getElementById('f_otherTotal').value = '';
     document.getElementById('f_hashrate').value   = document.getElementById('hashrate').value;
     document.getElementById('f_difficulty').value = document.getElementById('difficulty').value;
     document.getElementById('f_btcMined').value   = '';
@@ -2293,24 +2268,6 @@ function updateRubElecHint() {
 document.getElementById('f_kwh').addEventListener('input', updateRubElecHint);
 document.getElementById('f_rubElec').addEventListener('input', updateRubElecHint);
 document.getElementById('f_otherRub').addEventListener('input', function() { this.dataset.userEdited = '1'; });
-
-// Помощник «общая сумма × моя доля» — просто пишет результат в основное поле.
-const OTHER_SHARE_KEY = 'other_share_v1';
-function applyOtherSplit() {
-  const total = parseFloat(document.getElementById('f_otherTotal').value);
-  const share = parseFloat(document.getElementById('f_otherShare').value);
-  if (!isFinite(total) || !isFinite(share)) return;
-  const field = document.getElementById('f_otherRub');
-  field.value = Math.round(total * share / 100);
-  field.dataset.userEdited = '1';
-  try { localStorage.setItem(OTHER_SHARE_KEY, String(share)); } catch (e) {}
-}
-document.getElementById('f_otherTotal').addEventListener('input', applyOtherSplit);
-document.getElementById('f_otherShare').addEventListener('input', applyOtherSplit);
-try {
-  const savedShare = localStorage.getItem(OTHER_SHARE_KEY);
-  if (savedShare) document.getElementById('f_otherShare').value = savedShare;
-} catch (e) {}
 
 function getFormLocation() {
   const r = document.querySelector('input[name="f_location"]:checked');
