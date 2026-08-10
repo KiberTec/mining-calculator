@@ -347,6 +347,7 @@
   .field input:focus, .field select:focus { border-color: var(--accent); }
   @media (max-width: 640px) {
     .field input, .field select { font-size: 16px; padding: 10px 12px; }
+    .split-helper input { font-size: 16px !important; padding: 8px 10px !important; }
     .gh-password-input { font-size: 16px; }
     .slider-val-input { font-size: 14px; }
   }
@@ -472,6 +473,22 @@
 
   .field input::placeholder { color: var(--text3); }
   .field .hint { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .split-helper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .split-helper input {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 5px 7px !important;
+    font-size: 11px !important;
+    background: var(--bg2) !important;
+  }
 
   .form-actions {
     display: flex;
@@ -1049,7 +1066,7 @@
             <div class="loc-card-inner">
               <div class="loc-card-icon">🤝</div>
               <div class="loc-card-name">Дема</div>
-              <div class="loc-card-sub">особые условия — ₽ за эл-во + % от добычи</div>
+              <div class="loc-card-sub">вторая площадка — ₽ за эл-во + аренда</div>
             </div>
           </label>
         </div>
@@ -1086,6 +1103,18 @@
           <label>Заплачено за эл-во, ₽</label>
           <input type="number" id="f_rubElec" placeholder="227040" min="0" step="100">
           <span class="hint" id="f_rubElec_hint">эфф. тариф: —</span>
+        </div>
+        <div class="field">
+          <label>Доп. расходы, ₽</label>
+          <input type="number" id="f_otherRub" placeholder="11250" min="0" step="100" value="0">
+          <div class="split-helper">
+            <span>делим:</span>
+            <input type="number" id="f_otherTotal" placeholder="15000" min="0" step="100">
+            <span>₽ ×</span>
+            <input type="number" id="f_otherShare" placeholder="75" min="0" max="100" step="1">
+            <span>%</span>
+          </div>
+          <span class="hint">аренда, ремонты, обслуживание — твоя доля</span>
         </div>
         <div class="field">
           <label>Средний хешрейт, TH/s</label>
@@ -1342,7 +1371,7 @@
             <select id="roi_loc_preset">
               <option value="custom">Свои параметры</option>
               <option value="birsk">Бирск — классические условия</option>
-              <option value="dema">Дема — особые условия</option>
+              <option value="dema">Дема — вторая площадка</option>
             </select>
           </div>
           <div class="field">
@@ -1938,7 +1967,8 @@ function loadEntries(user) {
       if (!btcGiven && e.demaFeePercent > 0 && e.btcMined > 0) {
         btcGiven = e.btcMined * (e.demaFeePercent / 100);
       }
-      return { ...e, location: e.location || 'birsk', btcGiven };
+      const otherRub = typeof e.otherRub === 'number' ? e.otherRub : 0;
+      return { ...e, location: e.location || 'birsk', btcGiven, otherRub };
     });
   } catch(e) { return []; }
 }
@@ -1994,11 +2024,18 @@ function entryNetBtcMined(e) {
 function entryElecUsd(e) {
   return e.usdRub > 0 ? e.rubElec / e.usdRub : 0;
 }
+// Аренда, ремонты, обслуживание — всё, что не электричество и не доля партнёру.
+function entryOtherRub(e) {
+  return e.otherRub || 0;
+}
+function entryOtherUsd(e) {
+  return e.usdRub > 0 ? entryOtherRub(e) / e.usdRub : 0;
+}
 function entryTotalCostUsd(e) {
-  return entryElecUsd(e) + entryComissionUsd(e);
+  return entryElecUsd(e) + entryOtherUsd(e) + entryComissionUsd(e);
 }
 function entryTotalCostRub(e) {
-  return e.rubElec + entryComissionUsd(e) * e.usdRub;
+  return e.rubElec + entryOtherRub(e) + entryComissionUsd(e) * e.usdRub;
 }
 
 // Фин. итог по записи (mark-to-market в рублях):
@@ -2126,13 +2163,14 @@ function networkHashpriceUsdPerThDay(priceUsd, diffT) {
 // Свёртка массива записей в агрегаты для leaderboard'а (по локации / по всему).
 function aggregateEntries(entries) {
   if (!entries || !entries.length) return null;
-  let kwh = 0, rubElec = 0, elecUsd = 0, costUsd = 0, btcMinedGross = 0, btcMinedNet = 0,
+  let kwh = 0, rubElec = 0, otherRub = 0, elecUsd = 0, costUsd = 0, btcMinedGross = 0, btcMinedNet = 0,
       btcSold = 0, btcGiven = 0, revRubReal = 0, revUsdReal = 0,
       hashSum = 0, hashCnt = 0, jthSum = 0, jthCnt = 0,
       realSum = 0, realCnt = 0;
   for (const e of entries) {
     kwh += e.kwh || 0;
     rubElec += e.rubElec || 0;
+    otherRub += entryOtherRub(e);
     elecUsd += entryElecUsd(e);
     costUsd += entryTotalCostUsd(e);
     btcMinedGross += e.btcMined || 0;
@@ -2154,7 +2192,7 @@ function aggregateEntries(entries) {
   const totalCostRub = entries.reduce((s, e) => s + entryTotalCostRub(e), 0);
   return {
     count: entries.length,
-    kwh, rubElec, costUsd, totalCostRub,
+    kwh, rubElec, otherRub, costUsd, totalCostRub,
     btcMinedGross, btcMinedNet, btcSold, btcGiven, heldBtc,
     revRubReal, revUsdReal, revRubMtm, hodlUsd, hodlRub,
     finResultRub: revRubMtm - totalCostRub,
@@ -2199,6 +2237,7 @@ function openForm(entry = null) {
 
     document.getElementById('f_kwh').value        = entry.kwh ?? '';
     document.getElementById('f_rubElec').value    = entry.rubElec ?? '';
+    document.getElementById('f_otherRub').value   = entry.otherRub ?? 0;
     document.getElementById('f_hashrate').value   = entry.hashrate ?? '';
     document.getElementById('f_difficulty').value = entry.difficulty ?? '';
     document.getElementById('f_btcMined').value   = entry.btcMined ?? '';
@@ -2221,6 +2260,8 @@ function openForm(entry = null) {
     setSelectedMonth(yyyymm, true);
     document.getElementById('f_kwh').value        = document.getElementById('c_elec_kwh').value;
     document.getElementById('f_rubElec').value    = '';
+    document.getElementById('f_otherRub').dataset.userEdited = '';
+    document.getElementById('f_otherTotal').value = '';
     document.getElementById('f_hashrate').value   = document.getElementById('hashrate').value;
     document.getElementById('f_difficulty').value = document.getElementById('difficulty').value;
     document.getElementById('f_btcMined').value   = '';
@@ -2251,17 +2292,47 @@ function updateRubElecHint() {
 }
 document.getElementById('f_kwh').addEventListener('input', updateRubElecHint);
 document.getElementById('f_rubElec').addEventListener('input', updateRubElecHint);
+document.getElementById('f_otherRub').addEventListener('input', function() { this.dataset.userEdited = '1'; });
+
+// Помощник «общая сумма × моя доля» — просто пишет результат в основное поле.
+const OTHER_SHARE_KEY = 'other_share_v1';
+function applyOtherSplit() {
+  const total = parseFloat(document.getElementById('f_otherTotal').value);
+  const share = parseFloat(document.getElementById('f_otherShare').value);
+  if (!isFinite(total) || !isFinite(share)) return;
+  const field = document.getElementById('f_otherRub');
+  field.value = Math.round(total * share / 100);
+  field.dataset.userEdited = '1';
+  try { localStorage.setItem(OTHER_SHARE_KEY, String(share)); } catch (e) {}
+}
+document.getElementById('f_otherTotal').addEventListener('input', applyOtherSplit);
+document.getElementById('f_otherShare').addEventListener('input', applyOtherSplit);
+try {
+  const savedShare = localStorage.getItem(OTHER_SHARE_KEY);
+  if (savedShare) document.getElementById('f_otherShare').value = savedShare;
+} catch (e) {}
 
 function getFormLocation() {
   const r = document.querySelector('input[name="f_location"]:checked');
   return r ? r.value : 'birsk';
 }
+/** Аренда обычно повторяется из месяца в месяц — подставляем прошлое значение по этой точке. */
+function lastOtherRubFor(loc) {
+  const prev = sortByMonth(loadEntries()).filter(e => (e.location || 'birsk') === loc);
+  return prev.length ? (prev[prev.length - 1].otherRub || 0) : 0;
+}
+
 function updateLocationFormUI() {
   const loc = getFormLocation();
   document.querySelectorAll('.loc-card').forEach(c => {
     c.classList.toggle('selected', c.dataset.loc === loc);
   });
   document.getElementById('f_btcGivenField').style.display = loc === 'dema' ? '' : 'none';
+
+  const other = document.getElementById('f_otherRub');
+  if (editingId === null && other && !other.dataset.userEdited) {
+    other.value = lastOtherRubFor(loc);
+  }
 }
 document.querySelectorAll('input[name="f_location"]').forEach(r => {
   r.addEventListener('change', updateLocationFormUI);
@@ -2301,6 +2372,7 @@ document.getElementById('saveEntryBtn').addEventListener('click', () => {
     btcGiven: location === 'dema' ? (+document.getElementById('f_btcGiven').value || 0) : 0,
     kwh:        +document.getElementById('f_kwh').value || 0,
     rubElec:    +document.getElementById('f_rubElec').value || 0,
+    otherRub:   +document.getElementById('f_otherRub').value || 0,
     hashrate:   +document.getElementById('f_hashrate').value || 0,
     difficulty: +document.getElementById('f_difficulty').value || 0,
     btcMined:   +document.getElementById('f_btcMined').value || 0,
@@ -2359,7 +2431,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
       const hpOur = entryActualHashpriceUsdPerThDay(e);
       const hpNet = networkHashpriceUsdPerThDay(e.salePrice || window._liveBtcPrice || 0, e.difficulty || 0);
       return [
-        user, LOC_META[loc].label, e.month, e.kwh, e.rubElec, e.btcGiven || 0,
+        user, LOC_META[loc].label, e.month, e.kwh, e.rubElec, entryOtherRub(e), e.btcGiven || 0,
         e.hashrate, e.difficulty, e.btcMined, e.btcSold, e.salePrice, e.usdRub,
         Math.round(revenueRub), Math.round(entryFinResultRub(e)), Math.round(m.costPerBtc),
         theor.toFixed(5), jth ? jth.toFixed(2) : '', real ? real.toFixed(1) : '',
@@ -2376,7 +2448,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
     rows = buildRows(currentUser);
   }
   if (rows.length === 0) { alert('Журнал пуст'); return; }
-  const headers = ['Пользователь','Локация','Месяц','кВтч','Заплачено ₽','Отдано BTC','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Фин. итог ₽','Себестоимость 1 BTC $','Теор. BTC','J/TH','Realization %','Маржа %','Hashprice наш','Hashprice сеть'];
+  const headers = ['Пользователь','Локация','Месяц','кВтч','Заплачено ₽','Доп. расходы ₽','Отдано BTC','Хешрейт TH/s','Сложность T','Намайнено BTC','Продано BTC','Цена продажи $','Курс RUB','Доход ₽','Фин. итог ₽','Себестоимость 1 BTC $','Теор. BTC','J/TH','Realization %','Маржа %','Hashprice наш','Hashprice сеть'];
   const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -2565,7 +2637,8 @@ function renderJournal() {
     const netMined = e.btcMined - comissionBtc;
     a.kwh += e.kwh;
     a.rubElec += e.rubElec;
-    a.costUsd += elecUsd + comissionUsd;
+    a.otherRub += entryOtherRub(e);
+    a.costUsd += elecUsd + entryOtherUsd(e) + comissionUsd;
     a.comissionUsd += comissionUsd;
     a.comissionBtc += comissionBtc;
     a.btcMined += netMined;
@@ -2574,12 +2647,12 @@ function renderJournal() {
     a.revRub += revRub;
     a.revUsd += revUsd;
     return a;
-  }, { kwh:0, rubElec:0, costUsd:0, comissionUsd:0, comissionBtc:0,
+  }, { kwh:0, rubElec:0, otherRub:0, costUsd:0, comissionUsd:0, comissionBtc:0,
        btcMined:0, btcMinedGross:0, btcSold:0, revRub:0, revUsd:0 });
 
   const avgUsdRub = entries.length ? entries.reduce((s, e) => s + (e.usdRub || 0), 0) / entries.length : 0;
   const comissionRub = tot.comissionUsd * avgUsdRub;
-  const totalExpenseRub = tot.rubElec + comissionRub;
+  const totalExpenseRub = tot.rubElec + tot.otherRub + comissionRub;
   const profRub = tot.revRub - totalExpenseRub;
   const profUsd = tot.revUsd - tot.costUsd;
   const btcKept = tot.btcMined - tot.btcSold;
@@ -2627,7 +2700,7 @@ function renderJournal() {
     <div class="metric-card"><div class="metric-label">Всего продано</div><div class="metric-value purple">${tot.btcSold.toFixed(5)} BTC</div></div>
     <div class="metric-card"><div class="metric-label">HODL осталось</div><div class="metric-value ${btcKept>=0?'pos':'neg'}">${btcKept.toFixed(5)} BTC</div></div>
 
-    <div class="metric-card"><div class="metric-label">Расходы (всего)</div><div class="metric-value">${fmt(Math.round(totalExpenseRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(tot.costUsd))}</span></div></div>
+    <div class="metric-card"><div class="metric-label">Расходы (всего)</div><div class="metric-value">${fmt(Math.round(totalExpenseRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(tot.costUsd))}</span></div>${tot.otherRub > 0 ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">эл-во ${fmt(Math.round(tot.rubElec))} ₽ + доп. ${fmt(Math.round(tot.otherRub))} ₽</div>` : ''}</div>
     <div class="metric-card"><div class="metric-label">Доход от продаж</div><div class="metric-value">${fmt(Math.round(tot.revRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(tot.revUsd))}</span></div></div>
     <div class="metric-card"><div class="metric-label">Стоимость HODL сейчас <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0;">@ $${fmtEn(Math.round(curBtcPrice))}</span></div><div class="metric-value blue">${fmt(Math.round(hodlValueRub))} ₽<br><span style="font-size:13px;color:var(--text2)">$${fmtEn(Math.round(hodlValueUsd))}</span></div></div>
 
@@ -2668,8 +2741,11 @@ function renderJournal() {
       const minedDisplay = comissionBtc > 0
         ? `${netMined.toFixed(5)} <span style="color:var(--text3);font-size:10px;">(-${comissionBtc.toFixed(5)})</span>`
         : netMined.toFixed(5);
-      const elecCellHtml = comissionUsd > 0
-        ? `${fmt(e.rubElec)} ₽ <span style="color:var(--text3);font-size:10px;">+ ком. ${fmt(Math.round(comissionUsd * e.usdRub))}₽</span>`
+      const extras = [];
+      if (entryOtherRub(e) > 0) extras.push(`+ доп. ${fmt(Math.round(entryOtherRub(e)))}₽`);
+      if (comissionUsd > 0) extras.push(`+ ком. ${fmt(Math.round(comissionUsd * e.usdRub))}₽`);
+      const elecCellHtml = extras.length
+        ? `${fmt(e.rubElec)} ₽ <span style="color:var(--text3);font-size:10px;">${extras.join(' ')}</span>`
         : `${fmt(e.rubElec)} ₽`;
       const jth = entryJperTH(e);
       const realPct = entryRealizationPct(e);
@@ -2756,14 +2832,15 @@ function computeEntryMetrics(e) {
   const revRub = revUsd * e.usdRub;
   const comissionUsd = entryComissionUsd(e);
   const comissionRub = comissionUsd * e.usdRub;
-  const profRub = revRub - e.rubElec - comissionRub;
+  const otherRub = entryOtherRub(e);
+  const profRub = revRub - e.rubElec - otherRub - comissionRub;
   const costUsd = entryTotalCostUsd(e);
   const netMined = entryNetBtcMined(e);
   const costPerBtc = netMined > 0 ? costUsd / netMined : 0;
   const kept = netMined - e.btcSold;
   return { revRub, revUsd, profRub, costUsd, costPerBtc, kept,
     btcMined: netMined, btcSold: e.btcSold,
-    rubElec: e.rubElec + comissionRub, kwh: e.kwh,
+    rubElec: e.rubElec + otherRub + comissionRub, kwh: e.kwh,
     comissionUsd, comissionBtc: entryComissionBtc(e) };
 }
 function pctDiff(a, b) {
@@ -2997,7 +3074,7 @@ function monthlyCashRows(entries, avgUsdRub) {
   for (const e of entries) {
     if (!by[e.month]) by[e.month] = { month: e.month, expense: 0, revenue: 0, mined: 0, sold: 0 };
     const rate = e.usdRub || avgUsdRub || 0;
-    by[e.month].expense += e.rubElec + entryComissionUsd(e) * rate;
+    by[e.month].expense += e.rubElec + entryOtherRub(e) + entryComissionUsd(e) * rate;
     by[e.month].revenue += e.btcSold * e.salePrice * rate;
     by[e.month].mined   += e.btcMined - entryComissionBtc(e);
     by[e.month].sold    += e.btcSold;
@@ -3127,10 +3204,15 @@ function locationBaseline(entry, curDiff) {
   const comissionBtc = entryComissionBtc(entry);
   const netMined = entry.btcMined - comissionBtc;
   const scale = (entry.difficulty > 0 && curDiff > 0) ? entry.difficulty / curDiff : 1;
+  const otherRub = entryOtherRub(entry);
+  const comissionRub = entryComissionUsd(entry) * entry.usdRub;
   return {
     month: entry.month,
     kwh: entry.kwh,
-    costRub: entry.rubElec + entryComissionUsd(entry) * entry.usdRub,
+    costRub: entry.rubElec + otherRub + comissionRub,
+    // Всё, что не масштабируется тарифом — нужно, чтобы порог отключения по ₽/кВт·ч был честным.
+    nonElecRub: otherRub + comissionRub,
+    otherRub,
     btcNow: netMined * scale,
     tariff: entry.kwh > 0 ? entry.rubElec / entry.kwh : 0,
   };
@@ -3161,7 +3243,7 @@ function renderRiskMonitor(allEntries, ctx = {}) {
     const priceBuffer = curBtcPrice > 0 ? ((curBtcPrice - shutdownPrice) / curBtcPrice) * 100 : 0;
     const shutdownDiff = b.costRub > 0 && curDiff > 0 ? curDiff * (revenueRub / b.costRub) : Infinity;
     const diffBuffer = curDiff > 0 ? ((shutdownDiff / curDiff) - 1) * 100 : 0;
-    const shutdownTariff = b.kwh > 0 ? revenueRub / b.kwh : 0;
+    const shutdownTariff = b.kwh > 0 ? Math.max(0, revenueRub - b.nonElecRub) / b.kwh : 0;
     return { loc, meta: LOC_META[loc] || LOC_META.birsk, ...b, revenueRub, marginPct, shutdownPrice, priceBuffer, shutdownDiff, diffBuffer, shutdownTariff };
   });
 
@@ -3189,6 +3271,9 @@ function renderRiskMonitor(allEntries, ctx = {}) {
           '<div><div style="color:var(--text3);font-size:11px">Гаснет при сложности</div><b style="color:var(--text)">' + fmt(s.shutdownDiff, 0) + ' T</b> (+' + fmt(s.diffBuffer, 0) + '%)</div>' +
           '<div><div style="color:var(--text3);font-size:11px">Гаснет при тарифе</div><b style="color:var(--text)">' + fmt(s.shutdownTariff, 2) + ' ₽</b> (сейчас ' + fmt(s.tariff, 2) + ')</div>' +
         '</div>' +
+        (s.otherRub > 0
+          ? '<div style="font-size:11px;color:var(--text3);margin-top:10px">Учтён фикс. расход ' + fmt(Math.round(s.otherRub)) + ' ₽/мес (аренда, ремонты) — он не зависит от тарифа.</div>'
+          : '') +
       '</div>';
     }).join('') + '</div>';
 
