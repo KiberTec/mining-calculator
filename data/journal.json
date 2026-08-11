@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-10T05:31:27.722Z",
+  "updatedAt": "2026-08-11T07:29:25.094Z",
   "journals": {
     "D": [
       {
@@ -15,8 +15,7 @@
         "btcMined": 0.02359816,
         "btcSold": 0,
         "salePrice": 65000,
-        "usdRub": 75,
-        "otherRub": 0
+        "usdRub": 75
       },
       {
         "id": 1781522329427,
@@ -30,8 +29,7 @@
         "btcMined": 0.02086412,
         "btcSold": 0,
         "salePrice": 65000,
-        "usdRub": 75,
-        "otherRub": 0
+        "usdRub": 75
       }
     ],
     "G": [
@@ -47,8 +45,7 @@
         "salePrice": 69000,
         "usdRub": 78,
         "location": "birsk",
-        "btcGiven": 0,
-        "otherRub": 0
+        "btcGiven": 0
       },
       {
         "id": 1781356353924,
@@ -62,8 +59,7 @@
         "btcMined": 0.06174,
         "btcSold": 0.01,
         "salePrice": 69000,
-        "usdRub": 79,
-        "otherRub": 0
+        "usdRub": 79
       },
       {
         "id": 1781270151228,
@@ -77,8 +73,7 @@
         "salePrice": 75000,
         "usdRub": 75,
         "location": "birsk",
-        "btcGiven": 0,
-        "otherRub": 0
+        "btcGiven": 0
       },
       {
         "id": 1781355950945,
@@ -92,8 +87,7 @@
         "btcMined": 0.059716,
         "btcSold": 0.01,
         "salePrice": 72000,
-        "usdRub": 76,
-        "otherRub": 0
+        "usdRub": 76
       },
       {
         "id": 1784685276605,
@@ -107,8 +101,7 @@
         "btcMined": 0.2534,
         "btcSold": 0.12,
         "salePrice": 65000,
-        "usdRub": 79,
-        "otherRub": 0
+        "usdRub": 79
       },
       {
         "id": 1784685438052,
@@ -122,8 +115,7 @@
         "btcMined": 0.0623,
         "btcSold": 0.03,
         "salePrice": 65000,
-        "usdRub": 79,
-        "otherRub": 0
+        "usdRub": 79
       },
       {
         "id": 1786338905320,
