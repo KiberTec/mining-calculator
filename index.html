@@ -1506,6 +1506,8 @@ try {
 let sChart = null, cChart = null;
 let jChart1 = null, jChart2 = null, jChart3 = null, jChartHashprice = null;
 let editingId = null;
+// Исходные (месяц, локация) редактируемой записи — нужны, чтобы поймать переезд на другой месяц.
+let editingKey = null;
 
 // ============================================
 // HELPERS
@@ -1949,6 +1951,48 @@ function loadEntries(user) {
   } catch(e) { return []; }
 }
 
+// ---- Надгробия удалённых записей ----
+// Слияние с GitHub само по себе только добавляет записи, поэтому удаление (и смена
+// месяца, которая для слияния выглядит как удаление старого ключа) откатывалось
+// обратно при следующей синхронизации. Помечаем удалённые ключи временем удаления:
+// запись воскресает, только если она новее своего надгробия.
+const DELETED_KEY = 'mining_journal_deleted_v1';
+const TOMBSTONE_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+
+function entryKeyOf(e) { return e.month + '|' + (e.location || 'birsk'); }
+function tombKey(user, month, location) { return user + '|' + month + '|' + (location || 'birsk'); }
+/** Время последнего изменения записи. У старых записей его нет — берём id (тоже timestamp). */
+function entryStamp(e) { return e.updatedAt || e.id || 0; }
+
+function loadTombstones() {
+  try {
+    const t = JSON.parse(localStorage.getItem(DELETED_KEY) || '{}');
+    return (t && typeof t === 'object') ? t : {};
+  } catch(e) { return {}; }
+}
+function saveTombstones(t) {
+  try { localStorage.setItem(DELETED_KEY, JSON.stringify(pruneTombstones(t))); } catch(e) {}
+}
+function pruneTombstones(t) {
+  const cutoff = Date.now() - TOMBSTONE_TTL_MS;
+  const out = {};
+  for (const k in t) if (t[k] > cutoff) out[k] = t[k];
+  return out;
+}
+function addTombstone(user, month, location) {
+  const t = loadTombstones();
+  const k = tombKey(user, month, location);
+  t[k] = Math.max(Date.now(), (t[k] || 0) + 1);
+  saveTombstones(t);
+}
+/** Запись создали заново — надгробие больше не действует. */
+function clearTombstone(user, month, location) {
+  const t = loadTombstones();
+  delete t[tombKey(user, month, location)];
+  saveTombstones(t);
+}
+function activeUser() { return currentUser === 'DG' ? 'G' : currentUser; }
+
 // ---- Location filter (Birsk / Dema / All) ----
 const STORAGE_KEY_LOC_FILTER = 'mining_journal_location_filter_v1';
 const LOC_META = {
@@ -2203,6 +2247,7 @@ function openForm(entry = null) {
 
   if (entry) {
     editingId = entry.id;
+    editingKey = { month: entry.month, location: entry.location || 'birsk' };
     setSelectedMonth(entry.month || '', false);
     document.getElementById('f_difficulty').dataset.userEdited = '1';  // mark as edited so we don't auto-overwrite
 
@@ -2222,6 +2267,7 @@ function openForm(entry = null) {
     document.getElementById('f_usdRub').value     = entry.usdRub ?? '';
   } else {
     editingId = null;
+    editingKey = null;
     document.getElementById('f_difficulty').dataset.userEdited = '';
 
     // Дефолтная локация: текущий фильтр (если выбран конкретный) или Бирск
@@ -2253,6 +2299,7 @@ function closeForm() {
   document.getElementById('entryForm').classList.remove('active');
   closeMonthPicker();
   editingId = null;
+  editingKey = null;
 }
 
 function updateRubElecHint() {
@@ -2324,6 +2371,7 @@ document.getElementById('saveEntryBtn').addEventListener('click', () => {
 
   const entry = {
     id: editingId ?? Date.now(),
+    updatedAt: Date.now(),
     month,
     location,
     btcGiven: location === 'dema' ? (+document.getElementById('f_btcGiven').value || 0) : 0,
@@ -2338,19 +2386,30 @@ document.getElementById('saveEntryBtn').addEventListener('click', () => {
     usdRub:     +document.getElementById('f_usdRub').value || 0,
   };
 
+  const sameKey = (e) => e.month === month && (e.location || 'birsk') === location;
+  const user = activeUser();
   let entries = loadEntries();
+  let movedFrom = null;
+
   if (editingId !== null) {
-    entries = entries.map(e => e.id === editingId ? entry : e);
-  } else {
-    // Уникальность по (месяц, локация) — можно иметь и Бирск, и Дема в один месяц
-    const existing = entries.find(e => e.month === month && (e.location || 'birsk') === location);
-    if (existing) {
-      const locName = LOC_META[location].label;
-      if (!confirm(`Запись за ${month} (${locName}) уже существует. Заменить?`)) return;
-      entries = entries.filter(e => !(e.month === month && (e.location || 'birsk') === location));
-    }
-    entries.push(entry);
+    const prev = editingKey || { month, location };
+    // Убираем именно редактируемую строку по её собственным координатам.
+    entries = entries.filter(e => !(e.id === editingId && e.month === prev.month && (e.location || 'birsk') === prev.location));
+    if (prev.month !== month || prev.location !== location) movedFrom = prev;
   }
+
+  // Уникальность по (месяц, локация) — можно иметь и Бирск, и Дема в один месяц
+  if (entries.some(sameKey)) {
+    const locName = LOC_META[location].label;
+    if (!confirm(`Запись за ${month} (${locName}) уже существует. Заменить?`)) return;
+    entries = entries.filter(e => !sameKey(e));
+  }
+  entries.push(entry);
+
+  // Переезд на другой месяц = удаление старого ключа, иначе синхронизация вернёт его.
+  if (movedFrom) addTombstone(user, movedFrom.month, movedFrom.location);
+  clearTombstone(user, month, location);
+
   saveEntries(entries);
   closeForm();
   renderJournal();
@@ -2359,17 +2418,22 @@ document.getElementById('saveEntryBtn').addEventListener('click', () => {
 document.getElementById('clearAllBtn').addEventListener('click', () => {
   if (currentUser === 'DG') return;
   if (!confirm(`Удалить ВСЕ записи журнала ${currentUser}? Это действие нельзя отменить.`)) return;
+  for (const e of loadEntries()) addTombstone(activeUser(), e.month, e.location);
   saveEntries([]);
   renderJournal();
 });
 
-function deleteEntry(id) {
+// month/location обязательны: у записей, размноженных старым слиянием, id совпадают,
+// поэтому фильтр только по id снёс бы сразу обе строки.
+function deleteEntry(id, month, location) {
   if (!confirm('Удалить эту запись?')) return;
-  saveEntries(loadEntries().filter(e => e.id !== id));
+  const keep = loadEntries().filter(e => !(e.id === id && e.month === month && (e.location || 'birsk') === location));
+  addTombstone(activeUser(), month, location);
+  saveEntries(keep);
   renderJournal();
 }
-function editEntry(id) {
-  const entry = loadEntries().find(e => e.id === id);
+function editEntry(id, month, location) {
+  const entry = loadEntries().find(e => e.id === id && e.month === month && (e.location || 'birsk') === location);
   if (entry) openForm(entry);
 }
 
@@ -2731,8 +2795,8 @@ function renderJournal() {
           <td class="num ${realCls}" title="Realization rate — % реальной добычи от теоретической по формуле. 95%+ — здоровая ферма">${realCell}</td>
           <td class="num ${marginCls}" title="Mining margin %: (доход_с_HODL − расходы) / доход × 100">${marginCell}</td>
           <td class="actions-cell">
-            <button class="row-btn" title="Редактировать" onclick="editEntry(${e.id})">✎</button>
-            <button class="row-btn delete" title="Удалить" onclick="deleteEntry(${e.id})">✕</button>
+            <button class="row-btn" title="Редактировать" onclick="editEntry(${e.id}, '${e.month}', '${e.location || 'birsk'}')">✎</button>
+            <button class="row-btn delete" title="Удалить" onclick="deleteEntry(${e.id}, '${e.month}', '${e.location || 'birsk'}')">✕</button>
           </td>
         </tr>`;
     }
@@ -4824,6 +4888,7 @@ function ghBuildPayload() {
       G: loadEntries('G'),
     },
     diffCache: loadDiffCache(),
+    deleted: loadTombstones(),
   };
 }
 
@@ -4831,26 +4896,36 @@ function ghMergePayload(local, remote) {
   if (!remote) return local;
   // Ключ уникальности: month|location (раньше был просто month).
   // Для старых записей без location используем 'birsk' (миграция).
-  const keyOf = (e) => e.month + '|' + (e.location || 'birsk');
-  const mergeArr = (l, r) => {
+  const keyOf = entryKeyOf;
+
+  // Надгробия объединяем по самому позднему удалению.
+  const deleted = Object.assign({}, remote.deleted || {});
+  const localDel = local.deleted || {};
+  for (const k in localDel) deleted[k] = Math.max(deleted[k] || 0, localDel[k]);
+
+  const mergeArr = (user, l, r) => {
     const map = new Map();
-    for (const e of (r || [])) if (e && e.month) map.set(keyOf(e), e);
-    for (const e of (l || [])) {
-      if (!e || !e.month) continue;
+    const put = (e) => {
+      if (!e || !e.month) return;
       const k = keyOf(e);
+      // Запись переживает своё надгробие, только если её изменили уже после удаления.
+      if (entryStamp(e) <= (deleted[user + '|' + k] || 0)) return;
       const ex = map.get(k);
-      if (!ex || (e.id || 0) >= (ex.id || 0)) map.set(k, e);
-    }
+      if (!ex || entryStamp(e) >= entryStamp(ex)) map.set(k, e);
+    };
+    for (const e of (r || [])) put(e);
+    for (const e of (l || [])) put(e);
     return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
   };
   return {
     schemaVersion: 1,
     updatedAt: new Date().toISOString(),
     journals: {
-      D: mergeArr(local.journals && local.journals.D, remote.journals && remote.journals.D),
-      G: mergeArr(local.journals && local.journals.G, remote.journals && remote.journals.G),
+      D: mergeArr('D', local.journals && local.journals.D, remote.journals && remote.journals.D),
+      G: mergeArr('G', local.journals && local.journals.G, remote.journals && remote.journals.G),
     },
     diffCache: Object.assign({}, remote.diffCache || {}, local.diffCache || {}),
+    deleted: pruneTombstones(deleted),
   };
 }
 
@@ -4863,6 +4938,7 @@ function ghApplyPayload(p) {
     if (p.diffCache && typeof p.diffCache === 'object') {
       localStorage.setItem(DIFF_CACHE_KEY, JSON.stringify(p.diffCache));
     }
+    if (p.deleted && typeof p.deleted === 'object') saveTombstones(p.deleted);
   } catch(e) { return false; }
   return true;
 }
@@ -4875,6 +4951,7 @@ function payloadEqual(a, b) {
     D: p.journals && p.journals.D || [],
     G: p.journals && p.journals.G || [],
     diff: p.diffCache || {},
+    del: p.deleted || {},
   });
   return norm(a) === norm(b);
 }
