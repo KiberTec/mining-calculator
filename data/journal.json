@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-03T06:39:41.859Z",
+  "updatedAt": "2026-10-03T06:41:18.629Z",
   "journals": {
     "D": [
       {
@@ -203,11 +203,11 @@
       },
       {
         "id": 1791009521829,
-        "updatedAt": 1791009579879,
+        "updatedAt": 1791009676345,
         "month": "2026-09",
         "location": "birsk",
         "btcGiven": 0,
-        "kwh": 86000,
+        "kwh": 250000,
         "rubElec": 1249500,
         "otherRub": 0,
         "hashrate": 19300,
