@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-03T06:41:46.956Z",
+  "updatedAt": "2026-10-03T06:54:37.450Z",
   "journals": {
     "D": [
       {
@@ -187,13 +187,13 @@
       },
       {
         "id": 1791009406830,
-        "updatedAt": 1791009406830,
+        "updatedAt": 1791010475484,
         "month": "2026-09",
         "location": "dema",
         "btcGiven": 0,
         "kwh": 68818,
         "rubElec": 317700,
-        "otherRub": 15000,
+        "otherRub": 0,
         "hashrate": 4500,
         "difficulty": 132.76,
         "btcMined": 0.06384,
